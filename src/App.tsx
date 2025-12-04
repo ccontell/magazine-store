@@ -52,7 +52,17 @@ const App: React.FC = () => {
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [wishlist, setWishlist] = useState<number[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
+  
+  // Orders State with LocalStorage Persistence
+  const [orders, setOrders] = useState<Order[]>(() => {
+    try {
+      const savedOrders = localStorage.getItem('magazine_orders');
+      return savedOrders ? JSON.parse(savedOrders) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
   const [recentlyViewed, setRecentlyViewed] = useState<number[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   
@@ -326,6 +336,13 @@ const App: React.FC = () => {
   };
 
   const handleConfirmPayment = (method: PaymentMethod, paymentDetails: PaymentDetails) => {
+    // Fill in cardHolder if missing (common in PIX) with logged user name to ensure tracking in Admin Panel
+    const finalPaymentDetails = {
+        ...paymentDetails,
+        cardHolder: paymentDetails.cardHolder || user?.name || 'Cliente Visitante',
+        cardCpf: paymentDetails.cardCpf || user?.cpf
+    };
+
     const newOrder: Order = {
       id: `#${Math.floor(100000 + Math.random() * 900000)}`,
       date: new Date().toLocaleDateString('pt-BR'),
@@ -334,10 +351,19 @@ const App: React.FC = () => {
       status: 'processing',
       paymentMethod: method,
       installments: paymentDetails.installmentsSummary,
-      paymentDetails: paymentDetails
+      paymentDetails: finalPaymentDetails
     };
 
-    setOrders(prev => [newOrder, ...prev]);
+    const updatedOrders = [newOrder, ...orders];
+    setOrders(updatedOrders);
+    
+    // Save orders to localStorage
+    try {
+      localStorage.setItem('magazine_orders', JSON.stringify(updatedOrders));
+    } catch (e) {
+      console.error("Erro ao salvar pedido", e);
+    }
+
     setCart([]);
     setIsCheckoutOpen(false);
     setViewMode('orders');

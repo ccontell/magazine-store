@@ -182,7 +182,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [emailSuccess, setEmailSuccess] = useState(false);
   
-  // Mock Customer Orders (Generated when viewing a customer)
+  // Customer Orders (Fetched when viewing a customer)
   const [customerOrders, setCustomerOrders] = useState<any[]>([]);
 
   // Settings State
@@ -423,16 +423,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
     setEmailMessage('');
     setEmailSuccess(false);
 
-    // Generate Mock Orders for this specific customer
-    const mockOrders = Array.from({ length: customer.orders || 0 }).map((_, i) => ({
-      id: `#${Math.floor(200000 + Math.random() * 800000)}`,
-      date: new Date(Date.now() - Math.floor(Math.random() * 10000000000)).toLocaleDateString('pt-BR'),
-      status: Math.random() > 0.7 ? 'Entregue' : (Math.random() > 0.4 ? 'Enviado' : 'Processando'),
-      total: (Math.random() * 2000 + 100),
-      items: Math.floor(Math.random() * 5) + 1
-    })).sort((a, b) => b.id.localeCompare(a.id));
+    // Filter REAL orders for this customer (fuzzy match by name or exact match by email if available)
+    const customerName = customer.name.toLowerCase();
+    const realOrders = orders.filter(o => {
+        const orderHolder = o.paymentDetails?.cardHolder?.toLowerCase() || '';
+        // Check if customer name is in order holder name or vice versa
+        return orderHolder && (orderHolder.includes(customerName) || customerName.includes(orderHolder));
+    });
     
-    setCustomerOrders(mockOrders);
+    // Use real orders if found, otherwise empty (don't generate mocks to ensure admin sees reality)
+    setCustomerOrders(realOrders);
   };
 
   const handleSaveCustomerChanges = (e: React.FormEvent) => {
@@ -941,10 +941,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                                  <tr key={order.id} className="bg-white dark:bg-slate-800">
                                     <td className="px-4 py-3 font-mono text-slate-600 dark:text-slate-400">{order.id}</td>
                                     <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{order.date}</td>
-                                    <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{order.items}</td>
+                                    <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{order.items?.length || order.items}</td>
                                     <td className="px-4 py-3 font-bold text-slate-800 dark:text-white">R$ {order.total.toFixed(2)}</td>
                                     <td className="px-4 py-3">
-                                       <span className={`text-xs font-bold px-2 py-1 rounded uppercase ${order.status === 'Entregue' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{order.status}</span>
+                                       <span className={`text-xs font-bold px-2 py-1 rounded uppercase ${order.status === 'delivered' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{order.status === 'processing' ? 'Processando' : order.status === 'shipped' ? 'Enviado' : 'Entregue'}</span>
                                     </td>
                                  </tr>
                               )) : (
