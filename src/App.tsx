@@ -815,3 +815,292 @@ const App: React.FC = () => {
                       </button>
                     </div>
                   )}
+                </div>
+             </motion.div>
+          )}
+
+          {viewMode === 'orders' && user && (
+            <motion.div
+               key="orders"
+               initial="initial"
+               animate="animate"
+               exit="exit"
+               variants={pageVariants}
+            >
+               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                 <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                   <Package className="text-blue-600" /> Meus Pedidos
+                 </h2>
+                 
+                 {orders.length > 0 ? (
+                   <div className="space-y-4">
+                     {orders.map(order => (
+                       <div key={order.id} className="border border-gray-200 rounded-xl overflow-hidden">
+                         <div className="bg-gray-50 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                           <div className="flex flex-col sm:flex-row sm:gap-6">
+                             <div>
+                               <p className="text-xs text-gray-500 uppercase font-bold">Pedido Realizado</p>
+                               <p className="text-sm font-medium text-gray-900">{order.date}</p>
+                             </div>
+                             <div>
+                               <p className="text-xs text-gray-500 uppercase font-bold">Total</p>
+                               <p className="text-sm font-medium text-gray-900">R$ {order.total.toFixed(2)}</p>
+                             </div>
+                             <div>
+                               <p className="text-xs text-gray-500 uppercase font-bold">Pagamento</p>
+                               <p className="text-sm font-medium text-gray-900">
+                                 {order.paymentMethod === 'credit_card' ? 'Cartão de Crédito' : order.paymentMethod === 'debit_card' ? 'Débito' : 'Pix'}
+                                 {order.installments && <span className="text-gray-500 text-xs font-normal ml-1">({order.installments})</span>}
+                               </p>
+                             </div>
+                           </div>
+                           <div className="flex items-center gap-2">
+                             <span className="text-xs font-bold text-gray-500 uppercase">Pedido</span>
+                             <span className="text-sm font-mono text-gray-900">{order.id}</span>
+                           </div>
+                         </div>
+                         <div className="p-4">
+                           <div className="flex items-center justify-between mb-4">
+                             <div className="flex items-center gap-2">
+                               <div className={`w-2 h-2 rounded-full ${order.status === 'delivered' ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+                               <span className="font-bold text-sm text-gray-800 uppercase">
+                                 {order.status === 'processing' ? 'Processando Pagamento' : order.status === 'shipped' ? 'Em Trânsito' : 'Entregue'}
+                               </span>
+                             </div>
+                           </div>
+                           <div className="space-y-3">
+                             {order.items.map((item, idx) => (
+                               <div key={idx} className="flex items-center gap-4">
+                                 <img src={item.image} alt={item.title} className="w-16 h-16 object-contain border border-gray-100 rounded bg-white" />
+                                 <div className="flex-1">
+                                   <p className="text-sm font-medium text-gray-900 line-clamp-1">{item.title}</p>
+                                   <p className="text-xs text-gray-500">Qtd: {item.quantity}</p>
+                                 </div>
+                                 <p className="text-sm font-bold text-gray-900">R$ {item.price.toFixed(2)}</p>
+                               </div>
+                             ))}
+                           </div>
+                         </div>
+                       </div>
+                     ))}
+                   </div>
+                 ) : (
+                   <div className="text-center py-20">
+                     <Package size={48} className="mx-auto text-gray-300 mb-4" />
+                     <h3 className="text-gray-800 font-bold mb-2">Nenhum pedido encontrado</h3>
+                     <p className="text-gray-500 text-sm mb-6">Você ainda não fez nenhuma compra conosco.</p>
+                     <button onClick={handleGoHome} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700">
+                       Começar a Comprar
+                     </button>
+                   </div>
+                 )}
+               </div>
+            </motion.div>
+          )}
+
+        </AnimatePresence>
+      </main>
+
+      {/* Assistant Chat - Pass dynamic products */}
+      <Assistant products={products} cart={cart} />
+
+      {/* Product Details Modal */}
+      <AnimatePresence>
+        {activeProduct && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActiveProduct(null)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl relative z-10 overflow-hidden flex flex-col md:flex-row max-h-[90vh]"
+            >
+              <button 
+                onClick={() => setActiveProduct(null)}
+                className="absolute top-4 right-4 z-20 bg-gray-100 hover:bg-gray-200 p-2 rounded-full transition"
+              >
+                <X size={20} className="text-gray-600" />
+              </button>
+
+              {/* Gallery Section */}
+              <div className="w-full md:w-1/2 bg-gray-50 p-6 flex flex-col">
+                <div className="flex-1 flex items-center justify-center mb-4 relative">
+                   <AnimatePresence mode="wait">
+                     <motion.img 
+                       key={activeImage}
+                       initial={{ opacity: 0 }}
+                       animate={{ opacity: 1 }}
+                       exit={{ opacity: 0 }}
+                       src={activeImage} 
+                       alt={activeProduct.title} 
+                       className="max-h-[300px] md:max-h-[400px] w-auto object-contain mix-blend-multiply"
+                     />
+                   </AnimatePresence>
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                  {activeProduct.gallery.map((img, idx) => (
+                    <button 
+                      key={idx}
+                      onClick={() => setActiveImage(img)}
+                      className={`w-16 h-16 flex-shrink-0 border-2 rounded-lg overflow-hidden bg-white p-1 ${activeImage === img ? 'border-blue-600' : 'border-transparent hover:border-gray-300'}`}
+                    >
+                      <img src={img} alt="" className="w-full h-full object-contain" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Info Section */}
+              <div className="w-full md:w-1/2 p-6 md:p-8 overflow-y-auto custom-scrollbar bg-white">
+                 <div className="mb-1">
+                   <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded uppercase tracking-wide">
+                     {activeProduct.category}
+                   </span>
+                   {activeProduct.brand && (
+                      <span className="text-xs font-bold text-gray-500 ml-2 uppercase tracking-wide">
+                        {activeProduct.brand}
+                      </span>
+                   )}
+                 </div>
+                 
+                 <h2 className="text-2xl font-bold text-gray-900 mb-2 leading-tight">
+                   {activeProduct.title}
+                 </h2>
+                 
+                 <div className="flex items-center gap-2 mb-4">
+                   <div className="flex text-yellow-400 text-sm">
+                     {'★'.repeat(Math.floor(activeProduct.rating))}
+                     {'★'.repeat(5 - Math.floor(activeProduct.rating)).split('').map((_, i) => <span key={i} className="text-gray-200">★</span>)}
+                   </div>
+                   <span className="text-sm text-gray-500">({activeProduct.reviews} avaliações)</span>
+                 </div>
+                 
+                 <div className="mb-6 pb-6 border-b border-gray-100">
+                   {activeProduct.originalPrice && (
+                     <p className="text-gray-400 line-through text-sm">R$ {activeProduct.originalPrice.toFixed(2)}</p>
+                   )}
+                   <div className="flex items-baseline gap-2">
+                     <span className="text-4xl font-bold text-gray-900">R$ {activeProduct.price.toFixed(2)}</span>
+                   </div>
+                   <p className="text-green-600 text-sm font-medium mt-1">
+                     Em até 10x de R$ {(activeProduct.price / 10).toFixed(2)} sem juros
+                   </p>
+                 </div>
+
+                 {/* AI Summary Box */}
+                 <div className="bg-gradient-to-r from-indigo-50 to-blue-50 p-4 rounded-xl border border-indigo-100 mb-6">
+                    <div className="flex items-center gap-2 mb-2">
+                       <Sparkles size={16} className="text-indigo-600" />
+                       <span className="text-xs font-bold text-indigo-700 uppercase">Resumo da Maga IA</span>
+                    </div>
+                    <p className="text-sm text-indigo-900 italic leading-relaxed">
+                       "{aiSummary || 'Carregando análise inteligente...'}"
+                    </p>
+                 </div>
+
+                 <div className="flex gap-3 mb-8">
+                   {/* Quantity Selector */}
+                   <div className="flex items-center border border-gray-200 rounded-xl bg-gray-50 h-[52px]">
+                      <button 
+                        onClick={() => setDetailsQuantity(Math.max(1, detailsQuantity - 1))}
+                        disabled={detailsQuantity <= 1 || activeProduct.stock === 0}
+                        className="px-3 text-gray-500 hover:text-blue-600 disabled:opacity-30 transition"
+                      >
+                        <Minus size={16} />
+                      </button>
+                      <span className="w-8 text-center font-bold text-gray-800">{detailsQuantity}</span>
+                      <button 
+                        onClick={() => setDetailsQuantity(Math.min(activeProduct.stock, detailsQuantity + 1))}
+                        disabled={detailsQuantity >= activeProduct.stock || activeProduct.stock === 0}
+                        className="px-3 text-gray-500 hover:text-blue-600 disabled:opacity-30 transition"
+                      >
+                        <Plus size={16} />
+                      </button>
+                   </div>
+
+                   <button 
+                     onClick={() => {
+                        addToCart(activeProduct, detailsQuantity);
+                        setActiveProduct(null);
+                     }}
+                     disabled={activeProduct.stock === 0}
+                     className={`flex-1 font-bold py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 transition transform active:scale-95
+                       ${activeProduct.stock === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-blue-500/30'}
+                     `}
+                   >
+                     {activeProduct.stock === 0 ? (
+                       'Indisponível'
+                     ) : (
+                       <>
+                         <ShoppingCart size={20} /> Adicionar à Sacola
+                       </>
+                     )}
+                   </button>
+                   <button 
+                      onClick={() => toggleWishlist(activeProduct)}
+                      className={`p-3.5 rounded-xl border-2 transition ${wishlist.includes(activeProduct.id) ? 'border-red-200 bg-red-50 text-red-500' : 'border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-600'}`}
+                   >
+                     <Heart size={24} fill={wishlist.includes(activeProduct.id) ? "currentColor" : "none"} />
+                   </button>
+                 </div>
+                 
+                 {/* Tabs for Details */}
+                 <div className="flex border-b border-gray-200 mb-4">
+                    <button 
+                      onClick={() => setActiveTab('description')}
+                      className={`pb-3 pr-4 text-sm font-bold border-b-2 transition ${activeTab === 'description' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                    >
+                      Descrição
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab('specs')}
+                      className={`pb-3 px-4 text-sm font-bold border-b-2 transition ${activeTab === 'specs' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                    >
+                      Especificações
+                    </button>
+                 </div>
+                 
+                 <div className="text-sm text-gray-600 leading-relaxed">
+                    {activeTab === 'description' ? (
+                       <div className="space-y-4">
+                          <p className="whitespace-pre-line">{activeProduct.description}</p>
+                          {activeProduct.features && (
+                            <ul className="space-y-2 mt-4">
+                              {activeProduct.features.map((feature, i) => (
+                                <li key={i} className="flex items-start gap-2">
+                                  <CircleCheck size={16} className="text-green-500 mt-0.5 flex-shrink-0" />
+                                  <span>{feature}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                       </div>
+                    ) : (
+                       <div className="grid grid-cols-1 gap-y-3">
+                          {Object.entries(activeProduct.specifications).map(([key, value]) => (
+                             <div key={key} className="grid grid-cols-3 border-b border-gray-50 pb-2">
+                                <span className="text-gray-500 font-medium">{key}</span>
+                                <span className="col-span-2 text-gray-800">{value as string}</span>
+                             </div>
+                          ))}
+                       </div>
+                    )}
+                 </div>
+
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+    </div>
+  );
+};
+
+export default App;
