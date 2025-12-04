@@ -44,7 +44,9 @@ import {
   FileText,
   Tag,
   Percent,
-  Store // Add Store icon
+  Store, // Add Store icon
+  Truck,
+  Printer
 } from 'lucide-react';
 import { Product, Order, User } from '../types';
 import { CATEGORIES, CATEGORY_BRANDS } from '../constants';
@@ -528,6 +530,140 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
         );
 
       case 'orders':
+        if (viewingOrder) {
+          return (
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-colors min-h-[500px] flex flex-col">
+              {/* Header Details */}
+              <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900">
+                <div className="flex items-center gap-4">
+                  <button onClick={() => setViewingOrder(null)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition text-slate-500">
+                    <ArrowLeft size={20} />
+                  </button>
+                  <div>
+                     <h3 className="font-bold text-slate-800 dark:text-white text-lg leading-tight flex items-center gap-2">
+                       Pedido {viewingOrder.id}
+                       <span className={`text-xs px-2 py-0.5 rounded uppercase ${viewingOrder.status === 'delivered' ? 'bg-green-100 text-green-700' : viewingOrder.status === 'shipped' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                         {viewingOrder.status === 'processing' ? 'Processando' : viewingOrder.status === 'shipped' ? 'Enviado' : 'Entregue'}
+                       </span>
+                     </h3>
+                     <p className="text-slate-500 dark:text-slate-400 text-sm">Realizado em {viewingOrder.date}</p>
+                  </div>
+                </div>
+                <button className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition">
+                  <Printer size={16} /> Imprimir
+                </button>
+              </div>
+
+              <div className="p-6 overflow-y-auto">
+                {/* Status Progress */}
+                <div className="mb-8">
+                  <div className="flex items-center justify-between relative">
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-200 dark:bg-slate-700 -z-10"></div>
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-green-500 -z-10 transition-all duration-500" style={{ width: viewingOrder.status === 'processing' ? '0%' : viewingOrder.status === 'shipped' ? '50%' : '100%' }}></div>
+                    
+                    <div className="flex flex-col items-center gap-2">
+                       <div className="w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center shadow-lg border-4 border-white dark:border-slate-800">
+                          <Package size={20} />
+                       </div>
+                       <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Processando</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-2">
+                       <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg border-4 border-white dark:border-slate-800 ${viewingOrder.status === 'shipped' || viewingOrder.status === 'delivered' ? 'bg-green-500 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-400'}`}>
+                          <Truck size={20} />
+                       </div>
+                       <span className={`text-xs font-bold ${viewingOrder.status === 'shipped' || viewingOrder.status === 'delivered' ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400'}`}>Enviado</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-2">
+                       <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg border-4 border-white dark:border-slate-800 ${viewingOrder.status === 'delivered' ? 'bg-green-500 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-400'}`}>
+                          <CheckCircle size={20} />
+                       </div>
+                       <span className={`text-xs font-bold ${viewingOrder.status === 'delivered' ? 'text-slate-700 dark:text-slate-300' : 'text-slate-400'}`}>Entregue</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Order Items */}
+                  <div className="lg:col-span-2 space-y-4">
+                    <h4 className="font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-2"><ShoppingCart size={18} /> Itens do Pedido</h4>
+                    <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-700 overflow-hidden">
+                       <table className="w-full text-sm text-left">
+                          <thead className="bg-slate-100 dark:bg-slate-800 text-slate-500 uppercase text-xs font-bold">
+                             <tr>
+                                <th className="px-4 py-3">Produto</th>
+                                <th className="px-4 py-3 text-center">Qtd</th>
+                                <th className="px-4 py-3 text-right">Preço Un.</th>
+                                <th className="px-4 py-3 text-right">Total</th>
+                             </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                             {viewingOrder.items.map((item, idx) => (
+                                <tr key={idx} className="bg-white dark:bg-slate-800">
+                                   <td className="px-4 py-3">
+                                      <div className="flex items-center gap-3">
+                                         <img src={item.image} alt="" className="w-10 h-10 rounded object-contain bg-white border border-slate-100" />
+                                         <div>
+                                            <p className="font-bold text-slate-800 dark:text-slate-200 line-clamp-1">{item.title}</p>
+                                            <p className="text-xs text-slate-500">{item.brand}</p>
+                                         </div>
+                                      </div>
+                                   </td>
+                                   <td className="px-4 py-3 text-center text-slate-600 dark:text-slate-300">{item.quantity}</td>
+                                   <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">R$ {item.price.toFixed(2)}</td>
+                                   <td className="px-4 py-3 text-right font-bold text-slate-800 dark:text-white">R$ {(item.price * item.quantity).toFixed(2)}</td>
+                                </tr>
+                             ))}
+                          </tbody>
+                       </table>
+                    </div>
+                  </div>
+
+                  {/* Summary & Customer */}
+                  <div className="space-y-6">
+                     <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                        <h4 className="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2"><CreditCard size={18} /> Pagamento</h4>
+                        <div className="space-y-3 text-sm">
+                           <div className="flex justify-between">
+                              <span className="text-slate-500">Método</span>
+                              <span className="font-bold text-slate-800 dark:text-slate-200">
+                                 {viewingOrder.paymentMethod === 'credit_card' ? 'Cartão de Crédito' : viewingOrder.paymentMethod === 'debit_card' ? 'Débito' : 'PIX'}
+                              </span>
+                           </div>
+                           {viewingOrder.paymentDetails?.cardHolder && (
+                              <div className="flex justify-between">
+                                 <span className="text-slate-500">Titular</span>
+                                 <span className="font-medium text-slate-800 dark:text-slate-200 uppercase">{viewingOrder.paymentDetails.cardHolder}</span>
+                              </div>
+                           )}
+                           {viewingOrder.installments && (
+                              <div className="flex justify-between">
+                                 <span className="text-slate-500">Parcelas</span>
+                                 <span className="font-medium text-slate-800 dark:text-slate-200">{viewingOrder.installments}</span>
+                              </div>
+                           )}
+                           <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center">
+                              <span className="font-bold text-lg text-slate-800 dark:text-white">Total</span>
+                              <span className="font-bold text-xl text-blue-600 dark:text-blue-400">R$ {viewingOrder.total.toFixed(2)}</span>
+                           </div>
+                        </div>
+                     </div>
+
+                     <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-xl border border-blue-100 dark:border-blue-800">
+                        <h4 className="font-bold text-blue-800 dark:text-blue-300 mb-2 flex items-center gap-2"><Info size={18} /> Cliente</h4>
+                        <p className="text-sm text-blue-900 dark:text-blue-100 mb-1">
+                           <b>{viewingOrder.paymentDetails?.cardHolder || "Cliente Visitante"}</b>
+                        </p>
+                        {viewingOrder.paymentDetails?.cardCpf && (
+                           <p className="text-xs text-blue-700 dark:text-blue-300">CPF: {viewingOrder.paymentDetails.cardCpf}</p>
+                        )}
+                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
         return (
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-colors">
             <div className="p-6 border-b border-slate-100 dark:border-slate-700">
@@ -841,8 +977,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
         return (
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-colors">
             <div className="p-6 border-b border-slate-100 dark:border-slate-700">
-               <h3 className="font-bold text-slate-800 dark:text-white text-lg">Base de Clientes</h3>
-               <p className="text-slate-500 dark:text-slate-400 text-sm">Gerenciamento de relacionamento (CRM)</p>
+               <h3 className="font-bold text-slate-800 dark:text-white text-lg">Pedidos Recentes</h3>
+               <p className="text-slate-500 dark:text-slate-400 text-sm">Monitoramento de vendas em tempo real</p>
             </div>
             <table className="w-full text-sm text-left">
               <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 uppercase text-xs font-semibold">
