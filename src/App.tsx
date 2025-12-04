@@ -1,5 +1,4 @@
 
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Header } from './components/Header';
 import { ProductCard } from './components/ProductCard';
