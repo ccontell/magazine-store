@@ -48,7 +48,8 @@ import {
   Truck,
   Printer,
   Grid,
-  Layers
+  Layers,
+  Type
 } from 'lucide-react';
 import { Product, Order, User } from '../types';
 import { CATEGORIES, CATEGORY_BRANDS } from '../constants';
@@ -61,22 +62,36 @@ interface AdminDashboardProps {
   registeredUsers?: User[]; // Accept real users
   onUpdateProducts?: (products: Product[]) => void; // Function to update global state
   onGoToShop: () => void; // Function to go back to shop
+  siteTitle?: string;
+  promoMessage?: string;
+  onUpdateSiteConfig?: (title: string, message: string) => void;
 }
 
-type AdminView = 'dashboard' | 'products' | 'orders' | 'customers';
+type AdminView = 'dashboard' | 'products' | 'orders' | 'customers' | 'config';
 type CustomerTab = 'overview' | 'orders' | 'edit' | 'email';
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, products, orders, registeredUsers = [], onUpdateProducts, onGoToShop }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, products, orders, registeredUsers = [], onUpdateProducts, onGoToShop, siteTitle = 'MagaZine Store', promoMessage = '', onUpdateSiteConfig }) => {
   const [activeView, setActiveView] = useState<AdminView>('dashboard');
   const [searchTerm, setSearchTerm] = useState('');
   
   // Local Product State for CRUD operations (Simulation)
   const [localProducts, setLocalProducts] = useState<Product[]>(products);
   
+  // Config State
+  const [configTitle, setConfigTitle] = useState(siteTitle);
+  const [configMessage, setConfigMessage] = useState(promoMessage);
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
+  const [configSuccess, setConfigSuccess] = useState(false);
+
   // Update local state when parent props change (two-way sync)
   useEffect(() => {
     setLocalProducts(products);
   }, [products]);
+
+  useEffect(() => {
+     setConfigTitle(siteTitle);
+     setConfigMessage(promoMessage);
+  }, [siteTitle, promoMessage]);
 
   // Helper to sync changes back to App.tsx
   const syncProducts = (newProducts: Product[]) => {
@@ -88,7 +103,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   
   // Header Actions State
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false); // Used for generic settings modal, redirected to config tab
 
   // Notifications State
   const [adminNotifications, setAdminNotifications] = useState([
@@ -210,6 +225,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       setIsSavingSettings(false);
       setIsSettingsOpen(false);
     }, 1500);
+  };
+  
+  const handleSaveConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (onUpdateSiteConfig) {
+      setIsSavingConfig(true);
+      // Simulate save delay
+      setTimeout(() => {
+        onUpdateSiteConfig(configTitle, configMessage);
+        setIsSavingConfig(false);
+        setConfigSuccess(true);
+        setTimeout(() => setConfigSuccess(false), 3000);
+      }, 1000);
+    }
   };
 
   const handleMarkAllAsRead = () => {
@@ -441,6 +470,75 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
 
   const renderContent = () => {
     switch (activeView) {
+      case 'config':
+        return (
+          <div className="max-w-4xl mx-auto space-y-8">
+             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex justify-between items-center">
+                <div>
+                   <h3 className="font-bold text-slate-800 dark:text-white text-lg">Configurações da Loja</h3>
+                   <p className="text-slate-500 dark:text-slate-400 text-sm">Personalize a aparência e mensagens do seu e-commerce.</p>
+                </div>
+                <div className="p-3 bg-slate-100 dark:bg-slate-700 rounded-full text-slate-500">
+                   <Settings size={24} />
+                </div>
+             </div>
+
+             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <form onSubmit={handleSaveConfig} className="p-6 space-y-6">
+                   {configSuccess && (
+                      <div className="p-4 bg-green-50 text-green-700 border border-green-200 rounded-lg flex items-center gap-2 animate-pulse">
+                         <CheckCircle size={20} />
+                         <span className="font-bold">Alterações salvas com sucesso!</span>
+                      </div>
+                   )}
+
+                   <div className="space-y-4">
+                      <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg border border-slate-100 dark:border-slate-700">
+                         <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase mb-2 flex items-center gap-2">
+                            <Type size={16} className="text-blue-500" /> Título da Página (Aba do Navegador)
+                         </label>
+                         <input 
+                            type="text" 
+                            required
+                            value={configTitle}
+                            onChange={(e) => setConfigTitle(e.target.value)}
+                            className="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                            placeholder="Ex: MagaZine Store - Ofertas Todo Dia"
+                         />
+                         <p className="text-xs text-slate-500 mt-1">Este é o texto que aparece na aba do navegador ou nos favoritos.</p>
+                      </div>
+
+                      <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg border border-slate-100 dark:border-slate-700">
+                         <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase mb-2 flex items-center gap-2">
+                            <MegaphoneIcon /> Faixa Promocional (Topo do Site)
+                         </label>
+                         <textarea 
+                            rows={3}
+                            required
+                            value={configMessage}
+                            onChange={(e) => setConfigMessage(e.target.value)}
+                            className="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                            placeholder="Ex: FRETE GRÁTIS PARA TODO O BRASIL..."
+                         />
+                         <p className="text-xs text-slate-500 mt-1">Texto rotativo que aparece na faixa amarela no topo do cabeçalho.</p>
+                      </div>
+                   </div>
+
+                   <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-700">
+                      <button 
+                         type="submit" 
+                         disabled={isSavingConfig}
+                         className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg flex items-center gap-2 disabled:opacity-70 transition shadow-lg shadow-blue-500/30"
+                      >
+                         {isSavingConfig ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
+                         {isSavingConfig ? 'Salvando...' : 'Salvar Configurações'}
+                      </button>
+                   </div>
+                </form>
+             </div>
+          </div>
+        );
+
       case 'products':
         // Group filtered products by category for visualization
         const groupedProducts = filteredProducts.reduce((acc, product) => {
@@ -1142,10 +1240,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                       <Search size={20} /> <span className="font-medium">Buscar Pedido</span>
                     </button>
                     <button 
-                      onClick={() => setActiveView('customers')}
+                      onClick={() => setActiveView('config')}
                       className="w-full bg-white/10 hover:bg-white/20 p-3 rounded-lg flex items-center gap-3 transition"
                     >
-                      <Mail size={20} /> <span className="font-medium">Enviar Email Mkt</span>
+                      <Type size={20} /> <span className="font-medium">Editar Textos</span>
                     </button>
                   </div>
                </div>
@@ -1154,6 +1252,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
         );
     }
   };
+
+  const MegaphoneIcon = () => (
+     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+  );
 
   return (
     <div className={`min-h-screen ${settings.darkMode ? 'dark' : ''}`}>
@@ -1174,6 +1276,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
               { id: 'products', label: 'Produtos', icon: Package },
               { id: 'orders', label: 'Pedidos', icon: ShoppingCart },
               { id: 'customers', label: 'Clientes', icon: Users },
+              { id: 'config', label: 'Configurações', icon: Settings },
             ].map((item) => (
               <button
                 key={item.id}
@@ -1281,7 +1384,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
 
                 {/* Settings */}
                 <button 
-                  onClick={() => setIsSettingsOpen(true)}
+                  onClick={() => setActiveView('config')}
                   className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition"
                 >
                   <Settings size={20} />

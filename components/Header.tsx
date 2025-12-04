@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Search, ShoppingCart, User as UserIcon, Menu, Heart, LogOut, ChevronDown } from 'lucide-react';
 import { CartItem, User } from '../types';
@@ -16,6 +17,8 @@ interface HeaderProps {
   user: User | null;
   onOpenAuth: () => void;
   onLogout: () => void;
+  // Config Props
+  promoMessage?: string;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -29,7 +32,8 @@ export const Header: React.FC<HeaderProps> = ({
   onGoHome,
   user,
   onOpenAuth,
-  onLogout
+  onLogout,
+  promoMessage = "CADASTRE-SE AGORA E TENHA FRETE GRÁTIS NA PRIMEIRA COMPRA! 🚛💨      •      OFERTAS IMPERDÍVEIS SÓ HOJE      •      PARCELE EM ATÉ 12X NO CARTÃO DE CRÉDITO"
 }) => {
   const totalItems = cart.reduce((acc, item) => acc + item.quantity, 0);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -44,7 +48,7 @@ export const Header: React.FC<HeaderProps> = ({
           transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
           className="whitespace-nowrap inline-block"
         >
-          CADASTRE-SE AGORA E TENHA FRETE GRÁTIS NA PRIMEIRA COMPRA! 🚛💨 &nbsp;&nbsp;&nbsp;&nbsp; • &nbsp;&nbsp;&nbsp;&nbsp; OFERTAS IMPERDÍVEIS SÓ HOJE &nbsp;&nbsp;&nbsp;&nbsp; • &nbsp;&nbsp;&nbsp;&nbsp; PARCELE EM ATÉ 12X NO CARTÃO DE CRÉDITO
+          {promoMessage}
         </motion.div>
       </div>
 

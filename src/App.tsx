@@ -16,6 +16,23 @@ import { generateProductSummary } from './services/geminiService';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 
 const App: React.FC = () => {
+  // --- Site Configuration State ---
+  const [siteTitle, setSiteTitle] = useState(() => localStorage.getItem('site_title') || 'MagaZine Store');
+  const [promoMessage, setPromoMessage] = useState(() => localStorage.getItem('site_promo') || 'CADASTRE-SE AGORA E TENHA FRETE GRÁTIS NA PRIMEIRA COMPRA! 🚛💨      •      OFERTAS IMPERDÍVEIS SÓ HOJE      •      PARCELE EM ATÉ 12X NO CARTÃO DE CRÉDITO');
+
+  // Update Document Title Effect
+  useEffect(() => {
+    document.title = siteTitle;
+  }, [siteTitle]);
+
+  const handleUpdateSiteConfig = (newTitle: string, newMessage: string) => {
+    setSiteTitle(newTitle);
+    setPromoMessage(newMessage);
+    localStorage.setItem('site_title', newTitle);
+    localStorage.setItem('site_promo', newMessage);
+    addNotification('Configurações Salvas', 'As alterações foram aplicadas na loja com sucesso.', 'success');
+  };
+
   // --- Global Product State (Replaces static MOCK_PRODUCTS usage) ---
   const [products, setProducts] = useState<Product[]>(() => {
     // Try to load from localStorage first
@@ -447,6 +464,9 @@ const App: React.FC = () => {
             orders={orders} 
             registeredUsers={registeredUsers}
             onGoToShop={handleGoHome} // Passa a função para voltar à loja
+            siteTitle={siteTitle}
+            promoMessage={promoMessage}
+            onUpdateSiteConfig={handleUpdateSiteConfig}
          />
       </div>
     );
@@ -494,6 +514,7 @@ const App: React.FC = () => {
         user={user}
         onOpenAuth={() => setIsAuthModalOpen(true)}
         onLogout={handleLogout}
+        promoMessage={promoMessage}
       />
 
       <MobileMenu 
