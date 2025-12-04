@@ -3,19 +3,24 @@ import react from '@vitejs/plugin-react';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Carrega variáveis de ambiente baseadas no modo (dev/prod)
-  const env = loadEnv(mode, '.', '');
+  const env = loadEnv(mode, (process as any).cwd(), '');
 
   return {
     plugins: [react()],
     define: {
-      // Polyfill para garantir que process.env.API_KEY funcione no navegador
-      // Ele procura por VITE_API_KEY (padrão Vite) ou API_KEY
-      'process.env.API_KEY': JSON.stringify(env.VITE_API_KEY || env.API_KEY)
+      // Garante que process.env.API_KEY seja substituído pelo valor da string
+      'process.env.API_KEY': JSON.stringify(env.VITE_API_KEY || env.API_KEY),
+      // Define um objeto vazio para process.env para evitar erros caso alguma lib tente acessá-lo diretamente
+      // Nota: A substituição mais específica (API_KEY) geralmente tem precedência
+      'process.env': {}
     },
     build: {
       outDir: 'dist',
-      sourcemap: false
+      sourcemap: false,
+      commonjsOptions: {
+        // Ajuda o Rollup a lidar com pacotes que misturam CommonJS e ESM (comum em novas libs)
+        transformMixedEsModules: true,
+      },
     }
   };
 });
