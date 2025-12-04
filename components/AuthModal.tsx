@@ -249,19 +249,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
   const checkDuplicates = () => {
     const cleanCPF = cpf.replace(/\D/g, '');
     const cleanPhone = phone.replace(/\D/g, '');
+    const cleanEmail = email.trim().toLowerCase();
     
     // Check Email
-    if (registeredUsers.some(u => u.email.toLowerCase() === email.toLowerCase())) {
-       return { found: true, field: 'email', message: "E-mail já cadastrado no sistema." };
+    if (registeredUsers.some(u => u.email.toLowerCase().trim() === cleanEmail)) {
+       return { found: true, field: 'email', message: "E-mail já cadastrado." };
     }
     
     // Check CPF
-    if (registeredUsers.some(u => u.cpf && u.cpf.replace(/\D/g, '') === cleanCPF)) {
+    if (cleanCPF && registeredUsers.some(u => u.cpf && u.cpf.replace(/\D/g, '') === cleanCPF)) {
        return { found: true, field: 'cpf', message: "CPF já cadastrado." };
     }
     
     // Check Phone (casting to any to access phone property safely)
-    if (registeredUsers.some(u => (u as any).phone && (u as any).phone.replace(/\D/g, '') === cleanPhone)) {
+    if (cleanPhone && registeredUsers.some(u => (u as any).phone && (u as any).phone.replace(/\D/g, '') === cleanPhone)) {
        return { found: true, field: 'phone', message: "Telefone já cadastrado." };
     }
     
@@ -318,7 +319,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
       setTimeout(() => {
         const cleanCPF = cpf.replace(/\D/g, '');
         const userFound = registeredUsers.find(u => 
-          u.email.toLowerCase() === email.toLowerCase() && 
+          u.email.toLowerCase().trim() === email.toLowerCase().trim() && 
           u.cpf && u.cpf.replace(/\D/g, '') === cleanCPF
         );
 
@@ -362,7 +363,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
          if (duplicateCheck.field) {
             setErrors(prev => ({ ...prev, [duplicateCheck.field!]: duplicateCheck.message! }));
          }
-         setGlobalError(duplicateCheck.message || "Erro de cadastro");
+         setGlobalError("Dados já cadastrados no sistema. Verifique os campos.");
          return;
       }
 
@@ -387,7 +388,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
             phone: phone, // Added Phone Number
             address: fullAddress,
             status: 'Novo',
-            joinedDate: new Date().toLocaleDateString('pt-BR')
+            joinedDate: new Date().toLocaleDateString('pt-BR'),
+            password: password // Store password for persistence (In real app, hash this!)
           };
           
           onLogin(userData);
@@ -426,7 +428,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, 
 
       // --- CHECK REGISTERED USERS ---
       setTimeout(() => {
-        const foundUser = registeredUsers.find(u => u.email.toLowerCase() === email.trim().toLowerCase());
+        const foundUser = registeredUsers.find(u => u.email.toLowerCase().trim() === email.trim().toLowerCase());
         
         // Simple mock check: in a real app, verify password hash
         // Here we just check if user exists, OR if it's the hardcoded user
