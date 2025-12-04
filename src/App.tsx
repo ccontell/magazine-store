@@ -42,7 +42,16 @@ const App: React.FC = () => {
   // Auth State
   const [user, setUser] = useState<User | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [registeredUsers, setRegisteredUsers] = useState<User[]>([]); // Track real registrations
+  
+  // Users State with LocalStorage Persistence
+  const [registeredUsers, setRegisteredUsers] = useState<User[]>(() => {
+    try {
+      const savedUsers = localStorage.getItem('magazine_users');
+      return savedUsers ? JSON.parse(savedUsers) : [];
+    } catch (e) {
+      return [];
+    }
+  });
 
   // View State: 'home' (default), 'wishlist', 'orders', 'admin'
   const [viewMode, setViewMode] = useState<'home' | 'wishlist' | 'orders' | 'admin'>('home');
@@ -98,11 +107,31 @@ const App: React.FC = () => {
     setUser(userData);
     
     // Track registered users for admin panel (if not admin)
+    // Save to localStorage to persist across reloads
     if (userData.role !== 'admin') {
       setRegisteredUsers(prev => {
-        // Avoid duplicates
-        if (prev.find(u => u.email === userData.email)) return prev;
-        return [userData, ...prev];
+        // Avoid duplicates based on email
+        const existsIndex = prev.findIndex(u => u.email === userData.email);
+        let updatedList;
+        
+        if (existsIndex >= 0) {
+           // Update existing info but keep properties not passed in login (like potentially password if we stored it)
+           const updatedUser = { ...prev[existsIndex], ...userData };
+           updatedList = [...prev];
+           updatedList[existsIndex] = updatedUser;
+        } else {
+           // Add new
+           updatedList = [userData, ...prev];
+        }
+        
+        // Save to LocalStorage
+        try {
+          localStorage.setItem('magazine_users', JSON.stringify(updatedList));
+        } catch (e) {
+          console.error("Erro ao salvar usuários", e);
+        }
+        
+        return updatedList;
       });
     }
 
@@ -120,6 +149,27 @@ const App: React.FC = () => {
         setTimeout(() => setIsCheckoutOpen(true), 500); // Small delay for smooth transition
       }
     }
+  };
+
+  const handlePasswordReset = (email: string, newPassword: string) => {
+    setRegisteredUsers(prev => {
+      const updatedList = prev.map(u => {
+        if (u.email === email) {
+          // In a real app we would hash this. 
+          // Storing 'password' property in the user object for persistence simulation
+          return { ...u, password: newPassword };
+        }
+        return u;
+      });
+      
+      try {
+        localStorage.setItem('magazine_users', JSON.stringify(updatedList));
+      } catch (e) {
+        console.error("Erro ao atualizar senha", e);
+      }
+      return updatedList;
+    });
+    addNotification('Senha Atualizada', 'Sua senha foi redefinida com sucesso. Faça login agora.', 'success');
   };
 
   const handleLogout = () => {
@@ -412,7 +462,9 @@ const App: React.FC = () => {
           setIsAuthModalOpen(false);
           setPendingCheckout(false);
         }} 
-        onLogin={handleLogin} 
+        onLogin={handleLogin}
+        registeredUsers={registeredUsers}
+        onPasswordReset={handlePasswordReset}
       />
       <CartDrawer 
         isOpen={isCartOpen}

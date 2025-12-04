@@ -1,17 +1,20 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, User as UserIcon, ArrowRight, Loader2, Eye, EyeOff, Check, AlertCircle, ShieldCheck, FileText, MapPin, Home, Navigation, Users, Calendar, AlertTriangle, Hash, Landmark, ArrowLeft, MailOpen, SearchCheck } from 'lucide-react';
+import { X, Mail, Lock, User as UserIcon, ArrowRight, Loader2, Eye, EyeOff, Check, AlertCircle, ShieldCheck, FileText, MapPin, Home, Navigation, Users, Calendar, AlertTriangle, Hash, Landmark, ArrowLeft, MailOpen, SearchCheck, Phone, RefreshCcw } from 'lucide-react';
 import { User } from '../types';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLogin: (user: User) => void;
+  registeredUsers?: User[];
+  onPasswordReset?: (email: string, newPassword: string) => void;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }) => {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin, registeredUsers = [], onPasswordReset }) => {
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot_password'>('login');
+  const [resetStep, setResetStep] = useState<number>(0); // 0: input email/cpf, 1: new password
   
   const [isLoading, setIsLoading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false); // Identity check
@@ -22,6 +25,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
   const [cpf, setCpf] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [motherName, setMotherName] = useState('');
+  const [phone, setPhone] = useState(''); // New Phone State
   
   // Address State
   const [cep, setCep] = useState('');
@@ -67,12 +71,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
       .replace(/(\d{4})\d+?$/, '$1');
   };
 
+  const formatPhone = (value: string) => {
+    return value
+      .replace(/\D/g, '')
+      .replace(/(\d{2})(\d)/, '($1) $2')
+      .replace(/(\d{5})(\d)/, '$1-$2')
+      .replace(/(-\d{4})\d+?$/, '$1');
+  };
+
   const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setCpf(formatCPF(e.target.value));
   };
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setBirthDate(formatDate(e.target.value));
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPhone(formatPhone(e.target.value));
   };
 
   const handleCepChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -190,6 +206,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
       if (!birthDate) newErrors.birthDate = "Data de nascimento é obrigatória.";
       else if (!isValidDate(birthDate)) newErrors.birthDate = "Data inválida.";
       else if (calculateAge(birthDate) < 18) newErrors.birthDate = "Você precisa ter mais de 18 anos.";
+      
+      if (!phone.trim()) newErrors.phone = "Celular é obrigatório.";
+      else if (phone.length < 14) newErrors.phone = "Celular inválido.";
 
       if (!motherName.trim()) newErrors.motherName = "Nome da mãe é obrigatório.";
       else if (!isFullName(motherName)) newErrors.motherName = "Digite o nome completo da mãe.";
@@ -205,13 +224,48 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
       if (strengthScore < 5) newErrors.password = "Senha muito fraca.";
     }
 
-    if (!email) newErrors.email = "E-mail é obrigatório.";
-    else if (!email.includes('@')) newErrors.email = "Digite um e-mail válido.";
-    
-    if (!password) newErrors.password = "Senha é obrigatória.";
+    if (mode === 'forgot_password') {
+      if (!email) newErrors.email = "E-mail é obrigatório.";
+      if (!cpf) newErrors.cpf = "CPF é obrigatório.";
+      
+      if (resetStep === 1) {
+         if (!password) newErrors.password = "Nova senha é obrigatória.";
+         if (password !== confirmPassword) newErrors.confirmPassword = "As senhas não coincidem.";
+         if (strengthScore < 5) newErrors.password = "Senha muito fraca.";
+      }
+    } else {
+       // Login and Register
+       if (!email) newErrors.email = "E-mail é obrigatório.";
+       else if (!email.includes('@')) newErrors.email = "Digite um e-mail válido.";
+       
+       if (mode === 'login' && !password) newErrors.password = "Senha é obrigatória.";
+       if (mode === 'register' && !password) newErrors.password = "Senha é obrigatória.";
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const checkDuplicates = () => {
+    const cleanCPF = cpf.replace(/\D/g, '');
+    const cleanPhone = phone.replace(/\D/g, '');
+    
+    // Check Email
+    if (registeredUsers.some(u => u.email.toLowerCase() === email.toLowerCase())) {
+       return { found: true, field: 'email', message: "E-mail já cadastrado no sistema." };
+    }
+    
+    // Check CPF
+    if (registeredUsers.some(u => u.cpf && u.cpf.replace(/\D/g, '') === cleanCPF)) {
+       return { found: true, field: 'cpf', message: "CPF já cadastrado." };
+    }
+    
+    // Check Phone (casting to any to access phone property safely)
+    if (registeredUsers.some(u => (u as any).phone && (u as any).phone.replace(/\D/g, '') === cleanPhone)) {
+       return { found: true, field: 'phone', message: "Telefone já cadastrado." };
+    }
+    
+    return { found: false };
   };
 
   const checkReceitaFederal = async () => {
@@ -253,12 +307,65 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
       }, 3000);
     });
   };
-
-  const handleFormSubmit = async (e: React.FormEvent) => {
+  
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
 
+    if (resetStep === 0) {
+      // Verification Step
+      setIsLoading(true);
+      setTimeout(() => {
+        const cleanCPF = cpf.replace(/\D/g, '');
+        const userFound = registeredUsers.find(u => 
+          u.email.toLowerCase() === email.toLowerCase() && 
+          u.cpf && u.cpf.replace(/\D/g, '') === cleanCPF
+        );
+
+        if (userFound) {
+          setIsLoading(false);
+          setResetStep(1); // Move to password reset
+          setGlobalError(null);
+        } else {
+          setIsLoading(false);
+          setGlobalError("Dados não conferem com nenhum cadastro ativo.");
+        }
+      }, 1500);
+    } else {
+      // Update Password Step
+      setIsLoading(true);
+      setTimeout(() => {
+         if (onPasswordReset) {
+            onPasswordReset(email, password);
+         }
+         setIsLoading(false);
+         // Reset state and go to login
+         setMode('login');
+         resetForm();
+      }, 1500);
+    }
+  };
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (mode === 'forgot_password') {
+       handleForgotPasswordSubmit(e);
+       return;
+    }
+
+    if (!validateForm()) return;
+
     if (mode === 'register') {
+      // Step 0: Check Duplicates
+      const duplicateCheck = checkDuplicates();
+      if (duplicateCheck.found) {
+         if (duplicateCheck.field) {
+            setErrors(prev => ({ ...prev, [duplicateCheck.field!]: duplicateCheck.message! }));
+         }
+         setGlobalError(duplicateCheck.message || "Erro de cadastro");
+         return;
+      }
+
       // Step 1: Simulate Identity Verification with Receita Federal
       setIsVerifying(true);
       
@@ -267,13 +374,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
 
         if (verification.success) {
           // Success: Register User Immediately
-          const userData: User = {
+          // Create a rich user object with extra details for admin panel
+          const fullAddress = `${street}, ${addressNumber} ${complement ? '- ' + complement : ''} - ${neighborhood}, ${city} - ${cep}`;
+          
+          // Use 'any' or extended interface to pass extra fields not strictly in User type yet
+          const userData: any = {
             name: name,
             email: email,
             avatar: `https://ui-avatars.com/api/?name=${name}&background=0D8ABC&color=fff&size=128`,
             role: 'user',
-            cpf: cpf 
+            cpf: cpf,
+            phone: phone, // Added Phone Number
+            address: fullAddress,
+            status: 'Novo',
+            joinedDate: new Date().toLocaleDateString('pt-BR')
           };
+          
           onLogin(userData);
           onClose();
           resetForm();
@@ -291,7 +407,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
       setIsLoading(true);
       
       // --- MASTER USER CREDENTIAL CHECK ---
-      // Added trim() to avoid issues with accidental spaces
       if (email.trim() === 'suporte@suporte.com' && password.trim() === '102030$') {
          setTimeout(() => {
            const adminUser: User = {
@@ -309,18 +424,45 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
          return;
       }
 
+      // --- CHECK REGISTERED USERS ---
       setTimeout(() => {
-        const userData: User = {
-          name: 'Cliente Maga',
-          email: email,
-          avatar: `https://ui-avatars.com/api/?name=Cliente+Maga&background=0D8ABC&color=fff&size=128`,
-          role: 'user',
-          cpf: '123.456.789-00' // Mock CPF for existing user login
-        };
-        onLogin(userData);
-        setIsLoading(false);
-        onClose();
-        resetForm();
+        const foundUser = registeredUsers.find(u => u.email.toLowerCase() === email.trim().toLowerCase());
+        
+        // Simple mock check: in a real app, verify password hash
+        // Here we just check if user exists, OR if it's the hardcoded user
+        if (foundUser) {
+           // For this mock, we assume password is correct if user exists (since we don't strictly enforce pw check on old data)
+           // OR check if we saved a password property on it
+           const storedUser: any = foundUser;
+           if (storedUser.password && storedUser.password !== password) {
+              setGlobalError("Senha incorreta.");
+              setIsLoading(false);
+              return;
+           }
+
+           onLogin(foundUser);
+           setIsLoading(false);
+           onClose();
+           resetForm();
+        } else {
+           // Fallback for demo flow if list is empty
+           if (registeredUsers.length === 0) {
+             const userData: User = {
+                name: 'Cliente Maga',
+                email: email,
+                avatar: `https://ui-avatars.com/api/?name=Cliente+Maga&background=0D8ABC&color=fff&size=128`,
+                role: 'user',
+                cpf: '123.456.789-00' 
+             };
+             onLogin(userData);
+             setIsLoading(false);
+             onClose();
+             resetForm();
+           } else {
+             setGlobalError("Usuário não encontrado.");
+             setIsLoading(false);
+           }
+        }
       }, 1500);
     }
   };
@@ -330,6 +472,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
     setCpf('');
     setBirthDate('');
     setMotherName('');
+    setPhone('');
     setCep('');
     setStreet('');
     setAddressNumber('');
@@ -344,6 +487,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
     setErrors({});
     setShowPassword(false);
     setGlobalError(null);
+    setResetStep(0);
   };
 
   useEffect(() => {
@@ -380,37 +524,48 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
           <div className="absolute bottom-0 left-0 w-24 h-24 bg-yellow-400/20 rounded-full -ml-10 -mb-10 blur-xl"></div>
           
-          <h2 className="text-3xl font-bold mb-2 relative z-10">
-            {mode === 'login' ? 'Bem-vindo de volta!' : 'Crie sua conta'}
+          <h2 className="text-3xl font-bold mb-2 relative z-10 flex items-center gap-2">
+            {mode === 'login' ? 'Bem-vindo de volta!' : mode === 'register' ? 'Crie sua conta' : 'Recuperar Senha'}
           </h2>
           <p className="text-blue-100 text-sm relative z-10">
             {mode === 'login' 
               ? 'Acesse seus pedidos, favoritos e ofertas exclusivas.' 
-              : 'Junte-se a nós e ganhe frete grátis na primeira compra.'}
+              : mode === 'register' 
+                ? 'Junte-se a nós e ganhe frete grátis na primeira compra.'
+                : 'Informe seus dados para redefinir sua senha.'}
           </p>
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-gray-100 flex-shrink-0">
-          <button 
-            onClick={() => { setMode('login'); setErrors({}); setGlobalError(null); }}
-            className={`flex-1 py-4 text-sm font-bold uppercase tracking-wide transition relative ${mode === 'login' ? 'text-blue-600 bg-blue-50/50' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
-          >
-            Entrar
-            {mode === 'login' && <motion.div layoutId="auth-tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />}
-          </button>
-          <button 
-            onClick={() => { setMode('register'); setErrors({}); setGlobalError(null); }}
-            className={`flex-1 py-4 text-sm font-bold uppercase tracking-wide transition relative ${mode === 'register' ? 'text-blue-600 bg-blue-50/50' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
-          >
-            Cadastrar
-            {mode === 'register' && <motion.div layoutId="auth-tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />}
-          </button>
-        </div>
+        {/* Tabs - Only show if not in forgot password mode */}
+        {mode !== 'forgot_password' && (
+          <div className="flex border-b border-gray-100 flex-shrink-0">
+            <button 
+              onClick={() => { setMode('login'); setErrors({}); setGlobalError(null); }}
+              className={`flex-1 py-4 text-sm font-bold uppercase tracking-wide transition relative ${mode === 'login' ? 'text-blue-600 bg-blue-50/50' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
+            >
+              Entrar
+              {mode === 'login' && <motion.div layoutId="auth-tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />}
+            </button>
+            <button 
+              onClick={() => { setMode('register'); setErrors({}); setGlobalError(null); }}
+              className={`flex-1 py-4 text-sm font-bold uppercase tracking-wide transition relative ${mode === 'register' ? 'text-blue-600 bg-blue-50/50' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
+            >
+              Cadastrar
+              {mode === 'register' && <motion.div layoutId="auth-tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />}
+            </button>
+          </div>
+        )}
 
         {/* --- NORMAL FORM UI --- */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 sm:p-8">
           
+          {/* Back Button for Forgot Password */}
+          {mode === 'forgot_password' && (
+             <button onClick={() => { setMode('login'); setResetStep(0); setErrors({}); setGlobalError(null); }} className="flex items-center gap-1 text-sm text-gray-500 hover:text-blue-600 mb-4 font-medium transition">
+                <ArrowLeft size={16} /> Voltar para o Login
+             </button>
+          )}
+
           {globalError && (
             <motion.div 
               initial={{ opacity: 0, y: -10 }}
@@ -425,6 +580,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
           <form onSubmit={handleFormSubmit} className="space-y-4">
             
             <AnimatePresence mode="popLayout">
+              {/* REGISTER FIELDS */}
               {mode === 'register' && (
                 <motion.div 
                   initial={{ opacity: 0, height: 0 }}
@@ -478,6 +634,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
                       `}
                     />
                     {errors.birthDate && <p className="text-red-500 text-xs mt-1 ml-1 flex items-center gap-1"><AlertCircle size={10}/>{errors.birthDate}</p>}
+                  </div>
+
+                   {/* Phone Field */}
+                   <div className="relative group">
+                    <Phone className="absolute left-3 top-3.5 text-gray-400 group-focus-within:text-blue-500 transition" size={20} />
+                    <input 
+                      type="text" 
+                      placeholder="Celular (XX) XXXXX-XXXX"
+                      value={phone}
+                      maxLength={15}
+                      onChange={handlePhoneChange}
+                      className={`w-full pl-10 pr-4 py-3 bg-gray-50 border rounded-lg focus:outline-none focus:ring-2 transition text-sm
+                        ${errors.phone ? 'border-red-300 focus:ring-red-200' : 'border-gray-200 focus:ring-blue-100 focus:border-blue-500'}
+                      `}
+                    />
+                    {errors.phone && <p className="text-red-500 text-xs mt-1 ml-1 flex items-center gap-1"><AlertCircle size={10}/>{errors.phone}</p>}
                   </div>
 
                   {/* Mother's Name Field */}
@@ -614,20 +786,42 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
               )}
             </AnimatePresence>
 
-            {/* Email Field */}
+            {/* SHARED FIELDS (Email, Password) - Logic adjusted for views */}
+            
+            {/* EMAIL FIELD - Show in all modes */}
             <div className="relative group">
               <Mail className="absolute left-3 top-3.5 text-gray-400 group-focus-within:text-blue-500 transition" size={20} />
               <input 
                 type="email" 
-                placeholder="Seu E-mail"
+                placeholder={mode === 'forgot_password' ? "E-mail cadastrado" : "Seu E-mail"}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className={`w-full pl-10 pr-4 py-3 bg-gray-50 border rounded-lg focus:outline-none focus:ring-2 transition text-sm
+                disabled={mode === 'forgot_password' && resetStep === 1}
+                className={`w-full pl-10 pr-4 py-3 bg-gray-50 border rounded-lg focus:outline-none focus:ring-2 transition text-sm disabled:opacity-60
                   ${errors.email ? 'border-red-300 focus:ring-red-200' : 'border-gray-200 focus:ring-blue-100 focus:border-blue-500'}
                 `}
               />
               {errors.email && <p className="text-red-500 text-xs mt-1 ml-1 flex items-center gap-1"><AlertCircle size={10}/>{errors.email}</p>}
             </div>
+
+            {/* FORGOT PASSWORD: CPF Field for Verification */}
+            {mode === 'forgot_password' && (
+               <div className="relative group">
+                    <FileText className="absolute left-3 top-3.5 text-gray-400 group-focus-within:text-blue-500 transition" size={20} />
+                    <input 
+                      type="text" 
+                      placeholder="Confirme seu CPF"
+                      value={cpf}
+                      maxLength={14}
+                      onChange={handleCpfChange}
+                      disabled={resetStep === 1}
+                      className={`w-full pl-10 pr-4 py-3 bg-gray-50 border rounded-lg focus:outline-none focus:ring-2 transition text-sm disabled:opacity-60
+                        ${errors.cpf ? 'border-red-300 focus:ring-red-200' : 'border-gray-200 focus:ring-blue-100 focus:border-blue-500'}
+                      `}
+                    />
+                    {errors.cpf && <p className="text-red-500 text-xs mt-1 ml-1 flex items-center gap-1"><AlertCircle size={10}/>{errors.cpf}</p>}
+               </div>
+            )}
 
             <AnimatePresence mode="popLayout">
               {mode === 'register' && (
@@ -656,30 +850,45 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
               )}
             </AnimatePresence>
 
-            {/* Password Field */}
-            <div className="relative group">
-              <Lock className="absolute left-3 top-3.5 text-gray-400 group-focus-within:text-blue-500 transition" size={20} />
-              <input 
-                type={showPassword ? "text" : "password"} 
-                placeholder="Sua Senha"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={`w-full pl-10 pr-10 py-3 bg-gray-50 border rounded-lg focus:outline-none focus:ring-2 transition text-sm
-                  ${errors.password ? 'border-red-300 focus:ring-red-200' : 'border-gray-200 focus:ring-blue-100 focus:border-blue-500'}
-                `}
-              />
-              <button 
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600"
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
+            {/* PASSWORD FIELD - Show in Login, Register, and Forgot (Step 1) */}
+            {(mode !== 'forgot_password' || (mode === 'forgot_password' && resetStep === 1)) && (
+              <div className="relative group">
+                <Lock className="absolute left-3 top-3.5 text-gray-400 group-focus-within:text-blue-500 transition" size={20} />
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  placeholder={mode === 'forgot_password' ? "Nova Senha" : "Sua Senha"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={`w-full pl-10 pr-10 py-3 bg-gray-50 border rounded-lg focus:outline-none focus:ring-2 transition text-sm
+                    ${errors.password ? 'border-red-300 focus:ring-red-200' : 'border-gray-200 focus:ring-blue-100 focus:border-blue-500'}
+                  `}
+                />
+                <button 
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            )}
+            
+            {/* Forgot Password Link (Only in Login) */}
+            {mode === 'login' && (
+              <div className="flex justify-end">
+                <button 
+                   type="button" 
+                   onClick={() => { setMode('forgot_password'); setErrors({}); setGlobalError(null); }}
+                   className="text-xs text-blue-600 hover:underline font-medium"
+                >
+                  Esqueci minha senha
+                </button>
+              </div>
+            )}
 
-            {/* Register: Password Logic (Confirm + Strength) */}
+            {/* Register/Forgot: Password Logic (Confirm + Strength) */}
             <AnimatePresence mode="popLayout">
-              {mode === 'register' && (
+              {(mode === 'register' || (mode === 'forgot_password' && resetStep === 1)) && (
                 <motion.div 
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -760,12 +969,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
               {isLoading || isVerifying ? (
                 <div className="flex items-center gap-2">
                   <Loader2 className="animate-spin" size={20} />
-                  <span>{isVerifying ? 'Consultando Receita Federal...' : 'Carregando...'}</span>
+                  <span>
+                     {mode === 'forgot_password' ? 'Processando...' : isVerifying ? 'Consultando Receita Federal...' : 'Carregando...'}
+                  </span>
                 </div>
               ) : (
                 <>
-                  {mode === 'login' ? 'Acessar Conta' : 'Criar Cadastro'}
-                  <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                  {mode === 'login' ? 'Acessar Conta' : mode === 'register' ? 'Criar Cadastro' : (resetStep === 0 ? 'Verificar Dados' : 'Redefinir Senha')}
+                  {mode === 'forgot_password' && resetStep === 0 ? <SearchCheck size={20} /> : (mode === 'forgot_password' && resetStep === 1 ? <RefreshCcw size={20}/> : <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />)}
                 </>
               )}
             </button>

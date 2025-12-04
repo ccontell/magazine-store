@@ -126,22 +126,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   // Effect to merge real registered users into the customer list
   useEffect(() => {
     if (registeredUsers && registeredUsers.length > 0) {
-       const mappedUsers = registeredUsers.map((u, idx) => ({
-          id: 100 + idx, // Simple ID generation to avoid clash
-          name: u.name,
-          email: u.email,
-          phone: '(00) 00000-0000', // Mock missing data
-          spent: 0,
-          orders: 0,
-          lastOrder: 'Nunca',
-          status: 'Novo',
-          address: 'Endereço não informado' // Mock missing data
-       }));
+       const mappedUsers = registeredUsers.map((u, idx) => {
+          // Type casting to access extended properties that might exist from AuthModal
+          const extendedUser = u as any;
+          return {
+            id: 100 + idx, // Simple ID generation to avoid clash
+            name: u.name,
+            email: u.email,
+            phone: extendedUser.phone || '(11) 90000-0000', 
+            spent: 0,
+            orders: 0,
+            lastOrder: 'Nunca',
+            status: extendedUser.status || 'Novo',
+            address: extendedUser.address || 'Endereço não informado' 
+          };
+       });
 
        // Merge avoiding duplicates (by email)
        setCustomers(prev => {
           const existingEmails = new Set(prev.map(c => c.email));
           const newUnique = mappedUsers.filter(u => !existingEmails.has(u.email));
+          // Prepend new users so they appear first
           return [...newUnique, ...prev];
        });
     }
@@ -579,6 +584,260 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
         );
 
       case 'customers':
+        if (viewingCustomer) {
+           return (
+             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-colors min-h-[600px] flex flex-col">
+               {/* Detail Header */}
+               <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900">
+                  <div className="flex items-center gap-4">
+                     <button onClick={() => setViewingCustomer(null)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition text-slate-500">
+                        <ArrowLeft size={20} />
+                     </button>
+                     <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-lg">
+                           {viewingCustomer.name.charAt(0)}
+                        </div>
+                        <div>
+                           <h3 className="font-bold text-slate-800 dark:text-white text-lg leading-tight">{viewingCustomer.name}</h3>
+                           <p className="text-slate-500 dark:text-slate-400 text-sm flex items-center gap-2">
+                             ID: #{viewingCustomer.id} <span className="w-1 h-1 bg-slate-300 rounded-full"></span> 
+                             <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${viewingCustomer.status === 'VIP' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'}`}>{viewingCustomer.status}</span>
+                           </p>
+                        </div>
+                     </div>
+                  </div>
+                  <div className="flex gap-2">
+                     <button onClick={() => setCustomerTab('email')} className="p-2 text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800"><Mail size={18}/></button>
+                     <button onClick={() => setCustomerTab('edit')} className="p-2 text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800"><Edit size={18}/></button>
+                  </div>
+               </div>
+
+               <div className="flex border-b border-slate-100 dark:border-slate-700 px-6">
+                  {['overview', 'orders', 'edit', 'email'].map(tab => (
+                     <button 
+                       key={tab}
+                       onClick={() => setCustomerTab(tab as CustomerTab)}
+                       className={`px-4 py-3 text-sm font-bold border-b-2 transition capitalize ${customerTab === tab ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                     >
+                        {tab === 'overview' ? 'Visão Geral' : tab === 'orders' ? 'Pedidos' : tab === 'edit' ? 'Editar Dados' : 'Enviar Email'}
+                     </button>
+                  ))}
+               </div>
+
+               <div className="p-6 flex-1 overflow-y-auto">
+                  {customerTab === 'overview' && (
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="md:col-span-2 space-y-6">
+                           <div className="grid grid-cols-2 gap-4">
+                              <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
+                                 <p className="text-xs font-bold text-blue-500 uppercase mb-1">Total Gasto</p>
+                                 <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">R$ {viewingCustomer.spent.toFixed(2)}</p>
+                              </div>
+                              <div className="p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800">
+                                 <p className="text-xs font-bold text-purple-500 uppercase mb-1">Pedidos Realizados</p>
+                                 <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">{viewingCustomer.orders}</p>
+                              </div>
+                           </div>
+                           
+                           <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-5 border border-slate-100 dark:border-slate-700">
+                              <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2"><MapPin size={18}/> Endereço Principal</h4>
+                              <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{viewingCustomer.address || "Endereço não cadastrado."}</p>
+                           </div>
+
+                           <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-5 border border-slate-100 dark:border-slate-700">
+                              <h4 className="font-bold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2"><Info size={18}/> Informações de Contato</h4>
+                              <div className="space-y-3">
+                                 <div className="flex items-center gap-3 text-sm">
+                                    <Mail className="text-slate-400" size={16} />
+                                    <span className="text-slate-600 dark:text-slate-300">{viewingCustomer.email}</span>
+                                 </div>
+                                 <div className="flex items-center gap-3 text-sm">
+                                    <Phone className="text-slate-400" size={16} />
+                                    <span className="text-slate-600 dark:text-slate-300">{viewingCustomer.phone}</span>
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+
+                        <div className="space-y-4">
+                           <h4 className="font-bold text-slate-800 dark:text-white mb-2">Últimos Pedidos</h4>
+                           {customerOrders.length > 0 ? customerOrders.slice(0, 3).map((order: any) => (
+                              <div key={order.id} className="p-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-lg shadow-sm">
+                                 <div className="flex justify-between items-start mb-2">
+                                    <span className="text-xs font-mono font-bold text-slate-500">{order.id}</span>
+                                    <span className="text-[10px] text-slate-400">{order.date}</span>
+                                 </div>
+                                 <div className="flex justify-between items-center">
+                                    <span className="font-bold text-slate-800 dark:text-white text-sm">R$ {order.total.toFixed(2)}</span>
+                                    <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${order.status === 'Entregue' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{order.status}</span>
+                                 </div>
+                              </div>
+                           )) : (
+                              <p className="text-sm text-slate-500 italic">Nenhum pedido recente.</p>
+                           )}
+                           <button onClick={() => setCustomerTab('orders')} className="w-full py-2 text-sm text-blue-600 font-bold hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition">Ver Histórico Completo</button>
+                        </div>
+                     </div>
+                  )}
+
+                  {customerTab === 'orders' && (
+                     <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl overflow-hidden border border-slate-100 dark:border-slate-700">
+                        <table className="w-full text-sm text-left">
+                           <thead className="bg-slate-100 dark:bg-slate-800 text-slate-500 uppercase text-xs font-bold">
+                              <tr>
+                                 <th className="px-4 py-3">ID</th>
+                                 <th className="px-4 py-3">Data</th>
+                                 <th className="px-4 py-3">Itens</th>
+                                 <th className="px-4 py-3">Total</th>
+                                 <th className="px-4 py-3">Status</th>
+                              </tr>
+                           </thead>
+                           <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                              {customerOrders.length > 0 ? customerOrders.map((order: any) => (
+                                 <tr key={order.id} className="bg-white dark:bg-slate-800">
+                                    <td className="px-4 py-3 font-mono text-slate-600 dark:text-slate-400">{order.id}</td>
+                                    <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{order.date}</td>
+                                    <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{order.items}</td>
+                                    <td className="px-4 py-3 font-bold text-slate-800 dark:text-white">R$ {order.total.toFixed(2)}</td>
+                                    <td className="px-4 py-3">
+                                       <span className={`text-xs font-bold px-2 py-1 rounded uppercase ${order.status === 'Entregue' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{order.status}</span>
+                                    </td>
+                                 </tr>
+                              )) : (
+                                 <tr><td colSpan={5} className="p-6 text-center text-slate-500">Nenhum pedido encontrado.</td></tr>
+                              )}
+                           </tbody>
+                        </table>
+                     </div>
+                  )}
+
+                  {customerTab === 'edit' && (
+                     <div className="max-w-2xl mx-auto">
+                        <form onSubmit={handleSaveCustomerChanges} className="space-y-6">
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <div>
+                                 <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Nome Completo</label>
+                                 <input 
+                                    type="text" 
+                                    value={customerFormData.name || ''}
+                                    onChange={(e) => setCustomerFormData({...customerFormData, name: e.target.value})}
+                                    className="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 dark:text-white text-sm"
+                                 />
+                              </div>
+                              <div>
+                                 <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Status</label>
+                                 <select 
+                                    value={customerFormData.status || 'Novo'}
+                                    onChange={(e) => setCustomerFormData({...customerFormData, status: e.target.value})}
+                                    className="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 dark:text-white text-sm"
+                                 >
+                                    <option value="Novo">Novo</option>
+                                    <option value="Ativo">Ativo</option>
+                                    <option value="Inativo">Inativo</option>
+                                    <option value="VIP">VIP</option>
+                                 </select>
+                              </div>
+                           </div>
+
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <div>
+                                 <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">E-mail</label>
+                                 <input 
+                                    type="email" 
+                                    value={customerFormData.email || ''}
+                                    onChange={(e) => setCustomerFormData({...customerFormData, email: e.target.value})}
+                                    className="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 dark:text-white text-sm"
+                                 />
+                              </div>
+                              <div>
+                                 <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Telefone</label>
+                                 <input 
+                                    type="text" 
+                                    value={customerFormData.phone || ''}
+                                    onChange={(e) => setCustomerFormData({...customerFormData, phone: e.target.value})}
+                                    className="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 dark:text-white text-sm"
+                                 />
+                              </div>
+                           </div>
+
+                           <div>
+                              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Endereço Completo</label>
+                              <textarea 
+                                 rows={3}
+                                 value={customerFormData.address || ''}
+                                 onChange={(e) => setCustomerFormData({...customerFormData, address: e.target.value})}
+                                 className="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 dark:text-white text-sm resize-none"
+                              />
+                           </div>
+
+                           <div className="flex justify-end pt-4">
+                              <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg flex items-center gap-2">
+                                 <Save size={18} /> Salvar Alterações
+                              </button>
+                           </div>
+                        </form>
+                     </div>
+                  )}
+
+                  {customerTab === 'email' && (
+                     <div className="max-w-2xl mx-auto">
+                        <form onSubmit={handleSendEmail} className="space-y-4">
+                           {emailSuccess ? (
+                              <div className="p-8 bg-green-50 rounded-xl text-center border border-green-100">
+                                 <CheckCircle className="mx-auto text-green-500 mb-2" size={48} />
+                                 <h4 className="text-xl font-bold text-green-700">E-mail Enviado!</h4>
+                                 <p className="text-green-600">Sua mensagem foi enviada com sucesso para {viewingCustomer.email}.</p>
+                              </div>
+                           ) : (
+                              <>
+                                 <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-100 dark:border-blue-800 mb-6">
+                                    <p className="text-sm text-blue-800 dark:text-blue-200 flex items-center gap-2">
+                                       <Info size={16} /> Enviando mensagem para: <b>{viewingCustomer.name}</b> ({viewingCustomer.email})
+                                    </p>
+                                 </div>
+                                 
+                                 <div>
+                                    <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Assunto</label>
+                                    <input 
+                                       type="text" 
+                                       required
+                                       value={emailSubject}
+                                       onChange={(e) => setEmailSubject(e.target.value)}
+                                       className="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 dark:text-white text-sm"
+                                       placeholder="Ex: Oferta Especial para Você"
+                                    />
+                                 </div>
+                                 <div>
+                                    <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Mensagem</label>
+                                    <textarea 
+                                       rows={8}
+                                       required
+                                       value={emailMessage}
+                                       onChange={(e) => setEmailMessage(e.target.value)}
+                                       className="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 dark:text-white text-sm resize-none"
+                                       placeholder="Escreva sua mensagem aqui..."
+                                    />
+                                 </div>
+                                 <div className="flex justify-end pt-2">
+                                    <button 
+                                       type="submit" 
+                                       disabled={isSendingEmail}
+                                       className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg flex items-center gap-2 disabled:opacity-50"
+                                    >
+                                       {isSendingEmail ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
+                                       {isSendingEmail ? 'Enviando...' : 'Enviar E-mail'}
+                                    </button>
+                                 </div>
+                              </>
+                           )}
+                        </form>
+                     </div>
+                  )}
+               </div>
+             </div>
+           );
+        }
+
         return (
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-colors">
             <div className="p-6 border-b border-slate-100 dark:border-slate-700">

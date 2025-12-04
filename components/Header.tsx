@@ -44,7 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
           transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
           className="whitespace-nowrap inline-block"
         >
-          CADASTRE-SE AGORA E TENHA FRETE GRÁTIS NA PRIMEIRA COMPRA! 🚛💨 &nbsp;&nbsp;&nbsp;&nbsp; • &nbsp;&nbsp;&nbsp;&nbsp; OFERTAS IMPERDÍVEIS SÓ HOJE &nbsp;&nbsp;&nbsp;&nbsp; • &nbsp;&nbsp;&nbsp;&nbsp; PARCELE EM ATÉ 24X NO CARTÃO DE CRÉDITO
+          CADASTRE-SE AGORA E TENHA FRETE GRÁTIS NA PRIMEIRA COMPRA! 🚛💨 &nbsp;&nbsp;&nbsp;&nbsp; • &nbsp;&nbsp;&nbsp;&nbsp; OFERTAS IMPERDÍVEIS SÓ HOJE &nbsp;&nbsp;&nbsp;&nbsp; • &nbsp;&nbsp;&nbsp;&nbsp; PARCELE EM ATÉ 12X NO CARTÃO DE CRÉDITO
         </motion.div>
       </div>
 
