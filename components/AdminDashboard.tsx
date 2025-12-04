@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -49,7 +50,11 @@ import {
   Printer,
   Grid,
   Layers,
-  Type
+  Type,
+  Wifi, // New icon for online
+  Monitor,
+  Smartphone,
+  Activity
 } from 'lucide-react';
 import { Product, Order, User } from '../types';
 import { CATEGORIES, CATEGORY_BRANDS } from '../constants';
@@ -67,7 +72,7 @@ interface AdminDashboardProps {
   onUpdateSiteConfig?: (title: string, message: string) => void;
 }
 
-type AdminView = 'dashboard' | 'products' | 'orders' | 'customers' | 'config';
+type AdminView = 'dashboard' | 'products' | 'orders' | 'customers' | 'config' | 'online';
 type CustomerTab = 'overview' | 'orders' | 'edit' | 'email';
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, products, orders, registeredUsers = [], onUpdateProducts, onGoToShop, siteTitle = 'MagaZine Store', promoMessage = '', onUpdateSiteConfig }) => {
@@ -103,14 +108,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   
   // Header Actions State
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false); // Used for generic settings modal, redirected to config tab
-
+  
   // Notifications State
   const [adminNotifications, setAdminNotifications] = useState([
-    { id: 1, title: 'Estoque Crítico', message: '5 produtos acabaram de esgotar e precisam de reposição urgente.', type: 'alert', time: '5 min', read: false, details: 'Os itens: iPhone 15, Geladeira Brastemp e +3 itens estão com estoque zerado.' },
-    { id: 2, title: 'Novo Pedido #12390', message: 'Venda de R$ 3.450,00 aprovada via Cartão de Crédito.', type: 'success', time: '12 min', read: false, details: 'Cliente: Ana Silva. Itens: Smart TV LG 55". Pagamento confirmado.' },
-    { id: 3, title: 'Backup do Sistema', message: 'Backup diário realizado com sucesso no servidor seguro.', type: 'info', time: '1 hora', read: true, details: 'O backup de 1.2GB foi salvo em cloud storage às 03:00 AM.' },
-    { id: 4, title: 'Novo Cliente', message: 'Roberto Souza se cadastrou na plataforma.', type: 'info', time: '2 horas', read: true, details: 'Origem: Campanha Google Ads. Localização: Curitiba/PR.' },
+    { id: 1, title: 'Estoque Crítico', message: 'Verifique os produtos com baixo estoque.', type: 'alert', time: 'Agora', read: false },
+    { id: 3, title: 'Backup do Sistema', message: 'Backup diário realizado com sucesso.', type: 'info', time: '1 hora', read: true },
   ]);
   const [viewingNotification, setViewingNotification] = useState<any | null>(null);
 
@@ -131,46 +133,86 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
     isApplying: false
   });
 
-  // Customer Details State
-  // Mock Base Customers
-  const initialCustomers = [
-    { id: 1, name: 'Ana Silva', email: 'ana.silva@email.com', phone: '(11) 99999-1111', spent: 4500.00, orders: 3, lastOrder: '12/05/2024', status: 'Ativo', address: 'Rua das Flores, 123 - SP' },
-    { id: 2, name: 'Carlos Oliveira', email: 'carlos.o@email.com', phone: '(21) 98888-2222', spent: 1250.50, orders: 1, lastOrder: '10/05/2024', status: 'Inativo', address: 'Av. Paulista, 1000 - SP' },
-    { id: 3, name: 'Fernanda Santos', email: 'nanda.s@email.com', phone: '(31) 97777-3333', spent: 8900.00, orders: 5, lastOrder: '05/05/2024', status: 'Ativo', address: 'Rua da Bahia, 500 - MG' },
-    { id: 4, name: 'Roberto Souza', email: 'roberto.fz@email.com', phone: '(41) 96666-4444', spent: 340.00, orders: 1, lastOrder: '01/05/2024', status: 'Novo', address: 'Rua XV de Novembro, 20 - PR' },
-    { id: 5, name: 'Juliana Lima', email: 'ju.lima@email.com', phone: '(51) 95555-5555', spent: 12400.00, orders: 8, lastOrder: '28/04/2024', status: 'VIP', address: 'Av. Ipiranga, 300 - RS' },
-  ];
+  // --- CUSTOMERS STATE (ONLY REAL DATA) ---
+  const [customers, setCustomers] = useState<any[]>([]);
 
-  const [customers, setCustomers] = useState(initialCustomers);
-
-  // Effect to merge real registered users into the customer list
+  // Effect to sync registered users AND calculate their stats based on orders
   useEffect(() => {
-    if (registeredUsers && registeredUsers.length > 0) {
+    if (registeredUsers) {
        const mappedUsers = registeredUsers.map((u, idx) => {
-          // Type casting to access extended properties that might exist from AuthModal
           const extendedUser = u as any;
+          
+          // Calculate stats in real-time
+          const userOrders = orders.filter(o => 
+             (o.paymentDetails?.cardHolder && o.paymentDetails.cardHolder.toLowerCase() === u.name.toLowerCase()) || 
+             (o.paymentDetails?.cardCpf && extendedUser.cpf && o.paymentDetails.cardCpf.replace(/\D/g, '') === extendedUser.cpf.replace(/\D/g, ''))
+          );
+          
+          const totalSpent = userOrders.reduce((acc, curr) => acc + curr.total, 0);
+          const lastOrderDate = userOrders.length > 0 ? userOrders[0].date : 'Nunca';
+
           return {
-            id: 100 + idx, // Simple ID generation to avoid clash
+            id: 1000 + idx, // Generate ID
             name: u.name,
             email: u.email,
-            phone: extendedUser.phone || '(11) 90000-0000', 
-            spent: 0,
-            orders: 0,
-            lastOrder: 'Nunca',
+            phone: extendedUser.phone || 'Não informado', 
+            spent: totalSpent,
+            orders: userOrders.length,
+            lastOrder: lastOrderDate,
             status: extendedUser.status || 'Novo',
             address: extendedUser.address || 'Endereço não informado' 
           };
        });
 
-       // Merge avoiding duplicates (by email)
-       setCustomers(prev => {
-          const existingEmails = new Set(prev.map(c => c.email));
-          const newUnique = mappedUsers.filter(u => !existingEmails.has(u.email));
-          // Prepend new users so they appear first
-          return [...newUnique, ...prev];
-       });
+       setCustomers(mappedUsers);
     }
-  }, [registeredUsers]);
+  }, [registeredUsers, orders]); // Dependency on 'orders' ensures stats update when purchase happens
+
+  // --- ONLINE USERS SIMULATION ---
+  const [onlineUsers, setOnlineUsers] = useState<any[]>([
+    { id: 'guest-1', name: 'Visitante #4092', location: 'São Paulo, SP', page: 'Home', device: 'Mobile', time: '2 min', status: 'Active' },
+    { id: 'guest-2', name: 'Visitante #8821', location: 'Rio de Janeiro, RJ', page: 'Produto: iPhone 15', device: 'Desktop', time: '5 min', status: 'Active' },
+  ]);
+
+  // Effect to simulate real-time traffic
+  useEffect(() => {
+     const pages = ['Home', 'Carrinho', 'Checkout', 'Produto: Samsung S24', 'Categoria: Móveis', 'Login', 'Meus Pedidos'];
+     const locations = ['São Paulo, SP', 'Belo Horizonte, MG', 'Recife, PE', 'Porto Alegre, RS', 'Brasília, DF', 'Salvador, BA'];
+     
+     const interval = setInterval(() => {
+        setOnlineUsers(prev => {
+           // 1. Randomly update current page of a user
+           const updated = prev.map(u => {
+              if (Math.random() > 0.7) {
+                 return { ...u, page: pages[Math.floor(Math.random() * pages.length)] };
+              }
+              return u;
+           });
+
+           // 2. Randomly add or remove a visitor (Simulation)
+           if (Math.random() > 0.8) {
+              // Remove random
+              if (updated.length > 2) updated.splice(Math.floor(Math.random() * updated.length), 1);
+           } else if (Math.random() > 0.7) {
+              // Add random
+              const id = Math.floor(Math.random() * 9000);
+              updated.push({
+                 id: `guest-${id}`,
+                 name: `Visitante #${id}`,
+                 location: locations[Math.floor(Math.random() * locations.length)],
+                 page: 'Home',
+                 device: Math.random() > 0.6 ? 'Mobile' : 'Desktop',
+                 time: 'Just now',
+                 status: 'Active'
+              });
+           }
+           
+           return [...updated];
+        });
+     }, 3000);
+
+     return () => clearInterval(interval);
+  }, []);
 
   const [viewingCustomer, setViewingCustomer] = useState<any | null>(null);
   const [customerTab, setCustomerTab] = useState<CustomerTab>('overview');
@@ -185,16 +227,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   // Customer Orders (Fetched when viewing a customer)
   const [customerOrders, setCustomerOrders] = useState<any[]>([]);
 
-  // Settings State
-  const [settings, setSettings] = useState({
-    darkMode: false,
-    emailAlerts: true,
-    reportEmail: 'suporte@magazine.com',
-    twoFactor: true,
-    language: 'Português (Brasil)'
-  });
-  const [isSavingSettings, setIsSavingSettings] = useState(false);
-
   // Derived Stats
   const totalRevenue = orders.reduce((acc, order) => acc + order.total, 0);
   const totalStock = localProducts.reduce((acc, p) => acc + p.stock, 0);
@@ -208,25 +240,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   const filteredCustomers = customers.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   // Handlers
-  const toggleSetting = (key: 'darkMode' | 'emailAlerts' | 'twoFactor') => {
-    setSettings(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  const cycleLanguage = () => {
-    const langs = ['Português (Brasil)', 'English (US)', 'Español'];
-    const currentIdx = langs.indexOf(settings.language);
-    const nextIdx = (currentIdx + 1) % langs.length;
-    setSettings(prev => ({ ...prev, language: langs[nextIdx] }));
-  };
-
-  const handleSaveSettings = () => {
-    setIsSavingSettings(true);
-    setTimeout(() => {
-      setIsSavingSettings(false);
-      setIsSettingsOpen(false);
-    }, 1500);
-  };
-  
   const handleSaveConfig = (e: React.FormEvent) => {
     e.preventDefault();
     if (onUpdateSiteConfig) {
@@ -396,7 +409,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
           type: 'success', 
           time: 'Agora', 
           read: false,
-          details: 'Preços atualizados automaticamente.' 
         },
         ...prev
       ]);
@@ -470,6 +482,103 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
 
   const renderContent = () => {
     switch (activeView) {
+      case 'online':
+        return (
+          <div className="max-w-6xl mx-auto space-y-8">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex justify-between items-center">
+                <div>
+                   <h3 className="font-bold text-slate-800 dark:text-white text-lg flex items-center gap-2">
+                     <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                     Clientes Online Agora
+                   </h3>
+                   <p className="text-slate-500 dark:text-slate-400 text-sm">Monitoramento de tráfego em tempo real.</p>
+                </div>
+                <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-full text-green-600">
+                   <Activity size={24} />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+               <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-500 text-xs font-bold uppercase">Total Online</p>
+                    <p className="text-3xl font-bold text-slate-800 dark:text-white">{onlineUsers.length}</p>
+                  </div>
+                  <Users size={32} className="text-slate-300" />
+               </div>
+               <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-500 text-xs font-bold uppercase">Desktop</p>
+                    <p className="text-3xl font-bold text-blue-600">{onlineUsers.filter(u => u.device === 'Desktop').length}</p>
+                  </div>
+                  <Monitor size={32} className="text-blue-100 dark:text-blue-900" />
+               </div>
+               <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-500 text-xs font-bold uppercase">Mobile</p>
+                    <p className="text-3xl font-bold text-purple-600">{onlineUsers.filter(u => u.device === 'Mobile').length}</p>
+                  </div>
+                  <Smartphone size={32} className="text-purple-100 dark:text-purple-900" />
+               </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+               <div className="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+                  <h4 className="font-bold text-slate-700 dark:text-white text-sm uppercase">Lista de Visitantes</h4>
+               </div>
+               <table className="w-full text-sm text-left">
+                  <thead className="bg-slate-50 dark:bg-slate-900 text-slate-500 uppercase text-xs font-semibold border-b border-slate-200 dark:border-slate-700">
+                     <tr>
+                        <th className="px-6 py-3">Usuário / Visitante</th>
+                        <th className="px-6 py-3">Localização</th>
+                        <th className="px-6 py-3">Página Atual</th>
+                        <th className="px-6 py-3">Dispositivo</th>
+                        <th className="px-6 py-3">Tempo Online</th>
+                        <th className="px-6 py-3 text-right">Status</th>
+                     </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                     {onlineUsers.map((user) => (
+                        <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors animate-in fade-in slide-in-from-bottom-2 duration-500">
+                           <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${user.isRegistered ? 'bg-blue-100 text-blue-600' : 'bg-slate-200 text-slate-500'}`}>
+                                    {user.name.charAt(0)}
+                                 </div>
+                                 <div>
+                                    <p className="font-bold text-slate-800 dark:text-white">{user.name}</p>
+                                    <p className="text-[10px] text-slate-400 font-mono">{user.id}</p>
+                                 </div>
+                              </div>
+                           </td>
+                           <td className="px-6 py-4 text-slate-600 dark:text-slate-300 flex items-center gap-2">
+                              <MapPin size={14} className="text-slate-400" /> {user.location}
+                           </td>
+                           <td className="px-6 py-4">
+                              <span className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-2 py-1 rounded text-xs font-bold border border-blue-100 dark:border-blue-800">
+                                 {user.page}
+                              </span>
+                           </td>
+                           <td className="px-6 py-4 text-slate-600 dark:text-slate-300">
+                              <div className="flex items-center gap-2">
+                                 {user.device === 'Desktop' ? <Monitor size={16}/> : <Smartphone size={16}/>}
+                                 {user.device}
+                              </div>
+                           </td>
+                           <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{user.time}</td>
+                           <td className="px-6 py-4 text-right">
+                              <span className="flex items-center justify-end gap-1 text-green-600 font-bold text-xs">
+                                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div> Ativo
+                              </span>
+                           </td>
+                        </tr>
+                     ))}
+                  </tbody>
+               </table>
+            </div>
+          </div>
+        );
+
       case 'config':
         return (
           <div className="max-w-4xl mx-auto space-y-8">
@@ -1085,8 +1194,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
         return (
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-colors">
             <div className="p-6 border-b border-slate-100 dark:border-slate-700">
-               <h3 className="font-bold text-slate-800 dark:text-white text-lg">Pedidos Recentes</h3>
-               <p className="text-slate-500 dark:text-slate-400 text-sm">Monitoramento de vendas em tempo real</p>
+               <h3 className="font-bold text-slate-800 dark:text-white text-lg">Gerenciar Clientes</h3>
+               <p className="text-slate-500 dark:text-slate-400 text-sm">Lista completa de usuários cadastrados.</p>
             </div>
             <table className="w-full text-sm text-left">
               <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 uppercase text-xs font-semibold">
@@ -1100,7 +1209,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                {filteredCustomers.map(customer => (
+                {filteredCustomers.length > 0 ? filteredCustomers.map(customer => (
                   <tr key={customer.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -1135,7 +1244,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                       </button>
                     </td>
                   </tr>
-                ))}
+                )) : (
+                   <tr>
+                      <td colSpan={6} className="text-center py-12">
+                         <Users size={32} className="mx-auto text-slate-300 mb-2"/>
+                         <p className="text-slate-400">Nenhum cliente cadastrado encontrado.</p>
+                      </td>
+                   </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -1258,7 +1374,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   );
 
   return (
-    <div className={`min-h-screen ${settings.darkMode ? 'dark' : ''}`}>
+    <div className="min-h-screen">
       <div className="min-h-screen bg-slate-100 dark:bg-slate-900 transition-colors flex flex-col md:flex-row">
         
         {/* Sidebar */}
@@ -1276,6 +1392,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
               { id: 'products', label: 'Produtos', icon: Package },
               { id: 'orders', label: 'Pedidos', icon: ShoppingCart },
               { id: 'customers', label: 'Clientes', icon: Users },
+              { id: 'online', label: 'Online Agora', icon: Wifi },
               { id: 'config', label: 'Configurações', icon: Settings },
             ].map((item) => (
               <button
