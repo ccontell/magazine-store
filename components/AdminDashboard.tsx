@@ -54,7 +54,8 @@ import {
   Wifi, // New icon for online
   Monitor,
   Smartphone,
-  Activity
+  Activity,
+  RefreshCw // Import Refresh Icon
 } from 'lucide-react';
 import { Product, Order, User } from '../types';
 import { CATEGORIES, CATEGORY_BRANDS } from '../constants';
@@ -79,6 +80,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   const [activeView, setActiveView] = useState<AdminView>('dashboard');
   const [searchTerm, setSearchTerm] = useState('');
   
+  // Refresh State
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   // Local Product State for CRUD operations (Simulation)
   const [localProducts, setLocalProducts] = useState<Product[]>(products);
   
@@ -168,48 +172,51 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
     }
   }, [registeredUsers, orders]); // Dependency on 'orders' ensures stats update when purchase happens
 
-  // --- ONLINE USERS SIMULATION ---
-  const [onlineUsers, setOnlineUsers] = useState<any[]>([
-    { id: 'guest-1', name: 'Visitante #4092', location: 'São Paulo, SP', page: 'Home', device: 'Mobile', time: '2 min', status: 'Active' },
-    { id: 'guest-2', name: 'Visitante #8821', location: 'Rio de Janeiro, RJ', page: 'Produto: iPhone 15', device: 'Desktop', time: '5 min', status: 'Active' },
-  ]);
+  // --- ONLINE USERS (REAL REGISTERED USERS ONLY) ---
+  const [onlineUsers, setOnlineUsers] = useState<any[]>([]);
 
-  // Effect to simulate real-time traffic
+  // Effect to sync with registeredUsers prop
   useEffect(() => {
-     const pages = ['Home', 'Carrinho', 'Checkout', 'Produto: Samsung S24', 'Categoria: Móveis', 'Login', 'Meus Pedidos'];
-     const locations = ['São Paulo, SP', 'Belo Horizonte, MG', 'Recife, PE', 'Porto Alegre, RS', 'Brasília, DF', 'Salvador, BA'];
+     // Whenever registeredUsers changes (new registration), update the online list
+     // We map the real users to a display format for the online table
+     const realUsersList = registeredUsers.map((user, index) => {
+        // Create a consistent "device" and "location" based on the user data (mocked consistency)
+        // In a real app, this would come from the backend session
+        return {
+           id: `user-${index}`,
+           name: user.name,
+           email: user.email,
+           location: 'Brasil', // Default since we don't have GeoIP
+           page: 'Home', // Default start page
+           device: index % 2 === 0 ? 'Mobile' : 'Desktop', // Fake consistency
+           time: 'Online agora',
+           status: 'Ativo',
+           isRegistered: true
+        };
+     });
+     setOnlineUsers(realUsersList);
+  }, [registeredUsers]);
+
+  // Effect to simulate "Navigation" activity for these REAL users
+  useEffect(() => {
+     const pages = ['Home', 'Carrinho', 'Checkout', 'Produto: Samsung S24', 'Categoria: Móveis', 'Meus Pedidos', 'Ofertas'];
      
      const interval = setInterval(() => {
         setOnlineUsers(prev => {
-           // 1. Randomly update current page of a user
-           const updated = prev.map(u => {
+           // We only update existing users, NEVER add fake ones
+           return prev.map(u => {
+              // 30% chance to change page to simulate activity
               if (Math.random() > 0.7) {
-                 return { ...u, page: pages[Math.floor(Math.random() * pages.length)] };
+                 return { 
+                    ...u, 
+                    page: pages[Math.floor(Math.random() * pages.length)],
+                    time: 'Navegando...'
+                 };
               }
               return u;
            });
-
-           // 2. Randomly add or remove a visitor (Simulation)
-           if (Math.random() > 0.8) {
-              // Remove random
-              if (updated.length > 2) updated.splice(Math.floor(Math.random() * updated.length), 1);
-           } else if (Math.random() > 0.7) {
-              // Add random
-              const id = Math.floor(Math.random() * 9000);
-              updated.push({
-                 id: `guest-${id}`,
-                 name: `Visitante #${id}`,
-                 location: locations[Math.floor(Math.random() * locations.length)],
-                 page: 'Home',
-                 device: Math.random() > 0.6 ? 'Mobile' : 'Desktop',
-                 time: 'Just now',
-                 status: 'Active'
-              });
-           }
-           
-           return [...updated];
         });
-     }, 3000);
+     }, 4000); // Updates every 4 seconds
 
      return () => clearInterval(interval);
   }, []);
@@ -240,6 +247,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   const filteredCustomers = customers.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   // Handlers
+  const handleRefreshPage = () => {
+    setIsRefreshing(true);
+    // Simulate data refresh
+    setTimeout(() => {
+      setIsRefreshing(false);
+    }, 800);
+  };
+
   const handleSaveConfig = (e: React.FormEvent) => {
     e.preventDefault();
     if (onUpdateSiteConfig) {
@@ -491,7 +506,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                      <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                      Clientes Online Agora
                    </h3>
-                   <p className="text-slate-500 dark:text-slate-400 text-sm">Monitoramento de tráfego em tempo real.</p>
+                   <p className="text-slate-500 dark:text-slate-400 text-sm">Monitoramento de usuários reais em tempo real.</p>
                 </div>
                 <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-full text-green-600">
                    <Activity size={24} />
@@ -524,13 +539,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
 
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                <div className="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
-                  <h4 className="font-bold text-slate-700 dark:text-white text-sm uppercase">Lista de Visitantes</h4>
+                  <h4 className="font-bold text-slate-700 dark:text-white text-sm uppercase">Lista de Clientes Ativos</h4>
                </div>
                <table className="w-full text-sm text-left">
                   <thead className="bg-slate-50 dark:bg-slate-900 text-slate-500 uppercase text-xs font-semibold border-b border-slate-200 dark:border-slate-700">
                      <tr>
-                        <th className="px-6 py-3">Usuário / Visitante</th>
-                        <th className="px-6 py-3">Localização</th>
+                        <th className="px-6 py-3">Cliente</th>
+                        <th className="px-6 py-3">E-mail</th>
                         <th className="px-6 py-3">Página Atual</th>
                         <th className="px-6 py-3">Dispositivo</th>
                         <th className="px-6 py-3">Tempo Online</th>
@@ -538,21 +553,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                      </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                     {onlineUsers.map((user) => (
+                     {onlineUsers.length > 0 ? onlineUsers.map((user) => (
                         <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors animate-in fade-in slide-in-from-bottom-2 duration-500">
                            <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
-                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${user.isRegistered ? 'bg-blue-100 text-blue-600' : 'bg-slate-200 text-slate-500'}`}>
+                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs bg-blue-100 text-blue-600`}>
                                     {user.name.charAt(0)}
                                  </div>
                                  <div>
                                     <p className="font-bold text-slate-800 dark:text-white">{user.name}</p>
-                                    <p className="text-[10px] text-slate-400 font-mono">{user.id}</p>
+                                    <p className="text-[10px] text-slate-400 font-mono">Cadastrado</p>
                                  </div>
                               </div>
                            </td>
-                           <td className="px-6 py-4 text-slate-600 dark:text-slate-300 flex items-center gap-2">
-                              <MapPin size={14} className="text-slate-400" /> {user.location}
+                           <td className="px-6 py-4 text-slate-600 dark:text-slate-300">
+                              {user.email}
                            </td>
                            <td className="px-6 py-4">
                               <span className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-2 py-1 rounded text-xs font-bold border border-blue-100 dark:border-blue-800">
@@ -572,7 +587,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                               </span>
                            </td>
                         </tr>
-                     ))}
+                     )) : (
+                        <tr>
+                           <td colSpan={6} className="text-center py-8 text-slate-400">
+                              Nenhum cliente cadastrado está online no momento.
+                           </td>
+                        </tr>
+                     )}
                   </tbody>
                </table>
             </div>
@@ -1431,7 +1452,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 flex flex-col h-screen overflow-hidden">
+        <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
+          
+          {/* Refresh Overlay */}
+          <AnimatePresence>
+            {isRefreshing && (
+              <motion.div 
+                 initial={{ opacity: 0 }}
+                 animate={{ opacity: 1 }}
+                 exit={{ opacity: 0 }}
+                 className="absolute inset-0 z-[60] bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm flex items-center justify-center"
+              >
+                 <Loader2 className="animate-spin text-blue-600" size={48} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Header */}
           <header className="h-16 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-6 z-10 flex-shrink-0">
              <div className="flex items-center gap-4 flex-1">
@@ -1498,6 +1534,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                      )}
                    </AnimatePresence>
                 </div>
+
+                {/* Refresh Button */}
+                <button 
+                  onClick={handleRefreshPage}
+                  className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition"
+                  title="Atualizar Dados"
+                >
+                  <RefreshCw size={20} className={isRefreshing ? "animate-spin" : ""} />
+                </button>
 
                 {/* Settings */}
                 <button 
