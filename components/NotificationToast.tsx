@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, CircleCheck, Info, Tag, TriangleAlert } from 'lucide-react';
+import { X, CheckCircle, Info, Tag, AlertTriangle } from 'lucide-react';
 import { Notification } from '../types';
 
 interface NotificationToastProps {
@@ -40,9 +41,9 @@ export const NotificationToast: React.FC<NotificationToastProps> = ({ notificati
               {/* Icon */}
               <div className="mt-1">
                 {notif.type === 'promotion' && <div className="p-2 bg-red-100 text-red-600 rounded-full"><Tag size={18} /></div>}
-                {notif.type === 'success' && <div className="p-2 bg-green-100 text-green-600 rounded-full"><CircleCheck size={18} /></div>}
+                {notif.type === 'success' && <div className="p-2 bg-green-100 text-green-600 rounded-full"><CheckCircle size={18} /></div>}
                 {notif.type === 'info' && <div className="p-2 bg-blue-100 text-blue-600 rounded-full"><Info size={18} /></div>}
-                {notif.type === 'warning' && <div className="p-2 bg-yellow-100 text-yellow-600 rounded-full"><TriangleAlert size={18} /></div>}
+                {notif.type === 'warning' && <div className="p-2 bg-yellow-100 text-yellow-600 rounded-full"><AlertTriangle size={18} /></div>}
               </div>
 
               {/* Content */}

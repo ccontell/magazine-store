@@ -1,7 +1,8 @@
 
+
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User as UserIcon, ShoppingBag, Heart, CircleHelp, LogOut, ChevronRight, ChevronDown, Circle, LogIn } from 'lucide-react';
+import { X, User as UserIcon, ShoppingBag, Heart, HelpCircle, LogOut, ChevronRight, ChevronDown, Circle, LogIn } from 'lucide-react';
 import { Category, SortOption, User } from '../types';
 import { PriceFilter } from './PriceFilter';
 import { CATEGORY_BRANDS } from '../constants';
@@ -219,7 +220,7 @@ export const MobileMenu: React.FC<MobileMenuProps> = ({
                  </button>
                )}
                <button className="w-full flex items-center gap-3 p-3 text-gray-600 hover:text-blue-600 transition">
-                 <CircleHelp size={18} />
+                 <HelpCircle size={18} />
                  <span className="text-sm font-medium">Central de Ajuda</span>
                </button>
             </div>

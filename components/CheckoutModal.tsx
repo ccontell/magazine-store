@@ -1,7 +1,8 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, CreditCard, Smartphone, QrCode, Lock, CircleCheck, Copy, Calendar, ShieldCheck, FileText, AlertTriangle, Loader2, Check } from 'lucide-react';
+import { X, CreditCard, Smartphone, QrCode, Lock, CheckCircle, Copy, Calendar, ShieldCheck, FileText, AlertTriangle, Loader2, Check } from 'lucide-react';
 import { PaymentMethod, User, PaymentDetails } from '../types';
 
 interface CheckoutModalProps {
@@ -250,7 +251,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, t
                 animate={{ scale: 1 }} 
                 className="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6"
               >
-                <CircleCheck size={48} />
+                <CheckCircle size={48} />
               </motion.div>
               <h3 className="text-2xl font-bold text-gray-800">Pagamento Aprovado!</h3>
               <p className="text-gray-500 mt-2">Sua compra foi confirmada com sucesso.</p>
@@ -490,7 +491,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({ isOpen, onClose, t
                       </div>
 
                       <div className="bg-green-50 text-green-700 p-3 rounded-lg text-sm flex items-center gap-2 justify-center font-medium border border-green-100">
-                         <CircleCheck size={16} /> Aprovação Imediata
+                         <CheckCircle size={16} /> Aprovação Imediata
                       </div>
                    </motion.div>
                 )}

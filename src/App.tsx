@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Header } from './components/Header';
 import { ProductCard } from './components/ProductCard';
@@ -11,7 +12,7 @@ import { CheckoutModal } from './components/CheckoutModal'; // Import Checkout M
 import { CartDrawer } from './components/CartDrawer'; // Import Cart Drawer
 import { MOCK_PRODUCTS, CATEGORIES, CATEGORY_BRANDS } from './constants';
 import { Product, CartItem, Category, Notification, SortOption, Order, User, PaymentMethod, PaymentDetails } from './types';
-import { X, Minus, Plus, Trash2, ArrowRight, CircleCheck, Smartphone, Tv, Laptop, Sofa, Snowflake, ShoppingCart, Sparkles, Tag, ChevronLeft, ChevronRight, Gamepad2, Dumbbell, Shirt, CarFront, SprayCan, Heart, Filter, Menu, Grid, Circle, Package, Clock, Calendar, Truck, ShieldCheck, Award, CreditCard, Zap } from 'lucide-react';
+import { X, Minus, Plus, Trash2, ArrowRight, CheckCircle, Smartphone, Tv, Laptop, Sofa, Snowflake, ShoppingCart, Sparkles, Tag, ChevronLeft, ChevronRight, Gamepad2, Dumbbell, Shirt, CarFront, SprayCan, Heart, Filter, Menu, Grid, Circle, Package, Clock, Calendar, Truck, ShieldCheck, Award, CreditCard, Zap } from 'lucide-react';
 import { generateProductSummary } from './services/geminiService';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 
@@ -1074,7 +1075,7 @@ const App: React.FC = () => {
                             <ul className="space-y-2 mt-4">
                               {activeProduct.features.map((feature, i) => (
                                 <li key={i} className="flex items-start gap-2">
-                                  <CircleCheck size={16} className="text-green-500 mt-0.5 flex-shrink-0" />
+                                  <CheckCircle size={16} className="text-green-500 mt-0.5 flex-shrink-0" />
                                   <span>{feature}</span>
                                 </li>
                               ))}

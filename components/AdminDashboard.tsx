@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -23,7 +24,7 @@ import {
   Moon,
   Globe,
   Save,
-  CircleCheck, 
+  CheckCircle, 
   AlertTriangle,
   Info,
   Loader2,
@@ -693,7 +694,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                    )}
                    {outOfStockProducts.length === 0 && lowStockProducts.length === 0 && (
                      <div className="text-center py-8 text-slate-400 dark:text-slate-500 flex flex-col items-center">
-                       <CircleCheck size={48} className="mb-2 text-green-500" />
+                       <CheckCircle size={48} className="mb-2 text-green-500" />
                        <p>Tudo certo com o estoque!</p>
                      </div>
                    )}
@@ -1300,7 +1301,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                  <div className="p-6">
                     <div className="flex items-center gap-3 mb-4">
                        <div className={`p-3 rounded-full ${viewingNotification.type === 'alert' ? 'bg-red-100 text-red-600' : viewingNotification.type === 'success' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
-                          {viewingNotification.type === 'alert' ? <AlertTriangle size={24} /> : viewingNotification.type === 'success' ? <CircleCheck size={24} /> : <Info size={24} />}
+                          {viewingNotification.type === 'alert' ? <AlertTriangle size={24} /> : viewingNotification.type === 'success' ? <CheckCircle size={24} /> : <Info size={24} />}
                        </div>
                        <div>
                           <h3 className="font-bold text-slate-800 dark:text-white">{viewingNotification.title}</h3>
