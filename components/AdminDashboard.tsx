@@ -46,7 +46,9 @@ import {
   Percent,
   Store, // Add Store icon
   Truck,
-  Printer
+  Printer,
+  Grid,
+  Layers
 } from 'lucide-react';
 import { Product, Order, User } from '../types';
 import { CATEGORIES, CATEGORY_BRANDS } from '../constants';
@@ -108,8 +110,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   // Discount Modal State
   const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
   const [discountConfig, setDiscountConfig] = useState({
-    percentage: 20,
-    category: 'Todos',
+    percentage: 10,
+    targetType: 'category', // 'category' | 'brand' | 'product'
+    targetValue: 'Todos', // Stores Category Name, Brand Name, or Product ID
     isApplying: false
   });
 
@@ -318,11 +321,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
     setDiscountConfig(prev => ({ ...prev, isApplying: true }));
     
     setTimeout(() => {
-      const { percentage, category } = discountConfig;
+      const { percentage, targetType, targetValue } = discountConfig;
       
       const updatedList = localProducts.map(product => {
-        // Filter Check
-        if (category !== 'Todos' && product.category !== category) return product;
+        let shouldApply = false;
+
+        // Determine if product matches criteria
+        if (targetType === 'category') {
+          if (targetValue === 'Todos' || product.category === targetValue) shouldApply = true;
+        } else if (targetType === 'brand') {
+           if (product.brand === targetValue) shouldApply = true;
+        } else if (targetType === 'product') {
+           if (product.id.toString() === targetValue) shouldApply = true;
+        }
+
+        if (!shouldApply) return product;
         
         // Logic: Always base discount on the Original Price to avoid compound discounts shrinking value to zero
         // If originalPrice doesn't exist, set it to current price
@@ -341,12 +354,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
       setIsDiscountModalOpen(false);
       
       // Add notification about change
-      const count = category === 'Todos' ? localProducts.length : localProducts.filter(p => p.category === category).length;
+      let affectedLabel = '';
+      if (targetType === 'category') affectedLabel = `Categoria ${targetValue}`;
+      else if (targetType === 'brand') affectedLabel = `Marca ${targetValue}`;
+      else affectedLabel = 'Produto Individual';
+
       setAdminNotifications(prev => [
         { 
           id: Date.now(), 
           title: 'Promoção Aplicada', 
-          message: `Desconto de ${percentage}% aplicado a ${count} produtos da categoria ${category}.`, 
+          message: `Desconto de ${percentage}% aplicado a: ${affectedLabel}.`, 
           type: 'success', 
           time: 'Agora', 
           read: false,
@@ -425,9 +442,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
   const renderContent = () => {
     switch (activeView) {
       case 'products':
+        // Group filtered products by category for visualization
+        const groupedProducts = filteredProducts.reduce((acc, product) => {
+           const cat = product.category;
+           if (!acc[cat]) acc[cat] = [];
+           acc[cat].push(product);
+           return acc;
+        }, {} as Record<string, Product[]>);
+
         return (
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-colors min-h-[500px]">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center flex-wrap gap-4">
+          <div className="space-y-8 pb-10">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex justify-between items-center flex-wrap gap-4">
               <div>
                 <h3 className="font-bold text-slate-800 dark:text-white text-lg">Gerenciar Produtos</h3>
                 <p className="text-slate-500 dark:text-slate-400 text-sm">Total de {localProducts.length} itens no catálogo</p>
@@ -447,85 +472,70 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                 </button>
               </div>
             </div>
-            <div className="overflow-visible">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 uppercase text-xs font-semibold">
-                  <tr>
-                    <th className="px-6 py-4">Produto</th>
-                    <th className="px-6 py-4">Categoria</th>
-                    <th className="px-6 py-4">Preço</th>
-                    <th className="px-6 py-4">Estoque</th>
-                    <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4 text-right">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {filteredProducts.slice(0, 20).map(product => (
-                    <tr key={product.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors relative group">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <img src={product.image} alt="" className="w-10 h-10 rounded object-contain bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600" />
-                          <span className="font-medium text-slate-800 dark:text-slate-200 line-clamp-1 max-w-[200px]">{product.title}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{product.category}</td>
-                      <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-200">
-                        {product.originalPrice && product.originalPrice > product.price && (
-                          <span className="text-xs text-slate-400 line-through mr-1">R$ {product.originalPrice.toFixed(0)}</span>
-                        )}
-                        R$ {product.price.toFixed(2)}
-                      </td>
-                      <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{product.stock} un</td>
-                      <td className="px-6 py-4">
-                        {product.stock === 0 ? (
-                          <span className="px-2 py-1 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400 rounded text-xs font-bold">Esgotado</span>
-                        ) : product.stock < 5 ? (
-                          <span className="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-400 rounded text-xs font-bold">Baixo</span>
-                        ) : (
-                          <span className="px-2 py-1 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 rounded text-xs font-bold">Normal</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-right relative">
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActionMenuOpenId(actionMenuOpenId === product.id ? null : product.id);
-                          }}
-                          className="text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700"
-                        >
-                          <MoreVertical size={18} />
-                        </button>
 
-                        {/* Dropdown Menu */}
-                        <AnimatePresence>
-                          {actionMenuOpenId === product.id && (
-                            <motion.div 
-                              initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                              animate={{ opacity: 1, scale: 1, y: 0 }}
-                              exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                              className="absolute right-0 mt-1 w-32 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-100 dark:border-slate-700 z-50 overflow-hidden"
-                            >
-                              <button 
-                                onClick={() => handleEditProduct(product)}
-                                className="w-full text-left px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
-                              >
-                                <Edit size={14} /> Editar
-                              </button>
-                              <button 
-                                onClick={() => handleDeleteProduct(product.id)}
-                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
-                              >
-                                <Trash2 size={14} /> Excluir
-                              </button>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {Object.keys(groupedProducts).length === 0 ? (
+               <div className="text-center py-10 bg-white dark:bg-slate-800 rounded-xl">
+                 <Package size={48} className="mx-auto text-slate-300 mb-2"/>
+                 <p className="text-slate-500">Nenhum produto encontrado com estes filtros.</p>
+               </div>
+            ) : (
+               Object.entries(groupedProducts).map(([category, items]) => (
+                  <div key={category} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                     <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2">
+                        <Grid size={18} className="text-blue-500"/>
+                        <h4 className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wide text-sm">{category}</h4>
+                        <span className="text-xs bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full">{items.length}</span>
+                     </div>
+                     <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                          <thead className="bg-white dark:bg-slate-800 text-slate-400 uppercase text-xs font-semibold border-b border-slate-100 dark:border-slate-700">
+                            <tr>
+                              <th className="px-6 py-3">Produto</th>
+                              <th className="px-6 py-3">Marca</th>
+                              <th className="px-6 py-3">Preço</th>
+                              <th className="px-6 py-3">Estoque</th>
+                              <th className="px-6 py-3 text-right">Ações</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                            {items.map(product => (
+                              <tr key={product.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors relative group">
+                                <td className="px-6 py-3">
+                                  <div className="flex items-center gap-3">
+                                    <img src={product.image} alt="" className="w-9 h-9 rounded object-contain bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600" />
+                                    <span className="font-medium text-slate-800 dark:text-slate-200 line-clamp-1 max-w-[220px]">{product.title}</span>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-3 text-slate-600 dark:text-slate-400">{product.brand}</td>
+                                <td className="px-6 py-3 font-bold text-slate-800 dark:text-slate-200">
+                                  {product.originalPrice && product.originalPrice > product.price && (
+                                    <span className="text-xs text-slate-400 line-through mr-1">R$ {product.originalPrice.toFixed(0)}</span>
+                                  )}
+                                  R$ {product.price.toFixed(2)}
+                                </td>
+                                <td className="px-6 py-3">
+                                  {product.stock === 0 ? (
+                                    <span className="px-2 py-0.5 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400 rounded text-[10px] font-bold">Esgotado</span>
+                                  ) : product.stock < 5 ? (
+                                    <span className="px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-400 rounded text-[10px] font-bold">Baixo ({product.stock})</span>
+                                  ) : (
+                                    <span className="text-slate-600 dark:text-slate-400">{product.stock} un</span>
+                                  )}
+                                </td>
+                                <td className="px-6 py-3 text-right relative">
+                                  <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                     <button onClick={() => handleEditProduct(product)} className="p-1.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg"><Edit size={16}/></button>
+                                     <button onClick={() => handleDeleteProduct(product.id)} className="p-1.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg"><Trash2 size={16}/></button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                     </div>
+                  </div>
+               ))
+            )}
           </div>
         );
 
@@ -1317,7 +1327,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md relative z-10 overflow-hidden">
                <div className="p-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex justify-between items-center">
                   <h3 className="font-bold text-lg dark:text-white flex items-center gap-2">
-                    <Tag size={20} className="text-indigo-500" /> Ativar Descontos em Massa
+                    <Tag size={20} className="text-indigo-500" /> Criar Promoção
                   </h3>
                   <button onClick={() => setIsDiscountModalOpen(false)}><X size={20} className="text-slate-400" /></button>
                </div>
@@ -1325,7 +1335,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                <div className="p-6 space-y-6">
                   <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-lg border border-indigo-100 dark:border-indigo-800">
                      <p className="text-sm text-indigo-800 dark:text-indigo-200">
-                        Isso aplicará o desconto escolhido sobre o <b>preço original</b> de todos os produtos da categoria selecionada.
+                        O desconto será aplicado sobre o <b>preço original</b> dos produtos selecionados.
                      </p>
                   </div>
 
@@ -1346,22 +1356,68 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, 
                   </div>
 
                   <div>
-                     <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Categoria Alvo</label>
+                     <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Aplicar Em:</label>
                      <select 
-                        value={discountConfig.category}
-                        onChange={(e) => setDiscountConfig(prev => ({...prev, category: e.target.value}))}
-                        className="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white text-sm"
+                        value={discountConfig.targetType}
+                        onChange={(e) => {
+                           const type = e.target.value;
+                           setDiscountConfig(prev => ({
+                              ...prev, 
+                              targetType: type,
+                              targetValue: type === 'category' ? 'Todos' : '' 
+                           }))
+                        }}
+                        className="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white text-sm mb-3"
                      >
-                        <option value="Todos">Todas as Categorias</option>
-                        {CATEGORIES.filter(c => c !== 'Todos').map(c => (
-                           <option key={c} value={c}>{c}</option>
-                        ))}
+                        <option value="category">Por Categoria</option>
+                        <option value="brand">Por Marca</option>
+                        <option value="product">Produto Específico</option>
                      </select>
+
+                     {/* Dynamic Secondary Select */}
+                     {discountConfig.targetType === 'category' && (
+                        <select 
+                           value={discountConfig.targetValue}
+                           onChange={(e) => setDiscountConfig(prev => ({...prev, targetValue: e.target.value}))}
+                           className="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white text-sm"
+                        >
+                           <option value="Todos">Todas as Categorias</option>
+                           {CATEGORIES.filter(c => c !== 'Todos').map(c => (
+                              <option key={c} value={c}>{c}</option>
+                           ))}
+                        </select>
+                     )}
+
+                     {discountConfig.targetType === 'brand' && (
+                        <select 
+                           value={discountConfig.targetValue}
+                           onChange={(e) => setDiscountConfig(prev => ({...prev, targetValue: e.target.value}))}
+                           className="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white text-sm"
+                        >
+                           <option value="" disabled>Selecione uma Marca</option>
+                           {Array.from(new Set(localProducts.map(p => p.brand).filter(Boolean))).sort().map(brand => (
+                              <option key={brand} value={brand}>{brand}</option>
+                           ))}
+                        </select>
+                     )}
+
+                     {discountConfig.targetType === 'product' && (
+                        <select 
+                           value={discountConfig.targetValue}
+                           onChange={(e) => setDiscountConfig(prev => ({...prev, targetValue: e.target.value}))}
+                           className="w-full p-3 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white text-sm"
+                        >
+                           <option value="" disabled>Selecione um Produto</option>
+                           {localProducts.sort((a,b) => a.title.localeCompare(b.title)).map(p => (
+                              <option key={p.id} value={p.id.toString()}>{p.title} - R$ {p.price.toFixed(2)}</option>
+                           ))}
+                        </select>
+                     )}
                   </div>
 
                   <button 
                      onClick={handleApplyDiscount}
-                     disabled={discountConfig.isApplying}
+                     disabled={discountConfig.isApplying || (discountConfig.targetType !== 'category' && !discountConfig.targetValue)}
                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                      {discountConfig.isApplying ? <Loader2 className="animate-spin" size={20} /> : <CheckCircle size={20} />}
